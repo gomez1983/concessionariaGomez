@@ -6,7 +6,7 @@ import lombok.EqualsAndHashCode;
 
 import javax.persistence.*;
 
-@JsonRootName("carro")
+
 @Data
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
