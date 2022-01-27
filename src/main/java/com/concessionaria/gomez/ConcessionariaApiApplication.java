@@ -7,7 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 public class ConcessionariaApiApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(ConcessionariaApiApplication.class, args);
+			SpringApplication.run(ConcessionariaApiApplication.class, args);
 	}
 
 }

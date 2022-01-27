@@ -1,12 +1,15 @@
 package com.concessionaria.gomez.domain.model;
 
+import com.fasterxml.jackson.annotation.JsonRootName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import javax.persistence.*;
 
-@Entity
+@JsonRootName("carro")
 @Data
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@Entity
 public class Carro {
 
     @EqualsAndHashCode.Include
@@ -14,12 +17,16 @@ public class Carro {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nome;
+    @Column(nullable = false)
+    private String marca;
 
-    @Column
+    @Column(nullable = false)
+    private String modelo;
+
+    @Column(nullable = false)
     private int ano;
 
-    @Column
+    @Column(nullable = false)
     private double valorDeCompra;
 
 }
