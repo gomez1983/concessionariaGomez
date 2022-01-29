@@ -27,6 +27,5 @@ public class Carro {
     private int ano;
 
     @Column(nullable = false)
-    private double valorDeCompra;
-
+    private double compra;
 }

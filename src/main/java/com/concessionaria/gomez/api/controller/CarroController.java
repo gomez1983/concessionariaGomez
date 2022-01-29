@@ -29,7 +29,7 @@ public class CarroController {
         return carroRepository.findAll();
     }
 
-    @GetMapping("/{cozinhaId}")
+    @GetMapping("/{carroId}")
     public ResponseEntity<Carro> buscar(@PathVariable Long carroId) {
         Optional<Carro> carro = carroRepository.findById(carroId);
 
@@ -46,7 +46,7 @@ public class CarroController {
         return cadastroCarro.salvar(carro);
     }
 
-    @PutMapping("/{cozinhaId}")
+    @PutMapping("/{carroId}")
     public ResponseEntity<Carro> atualizar(@PathVariable Long carroId,
                                              @RequestBody Carro carro) {
         Optional<Carro> carroAtual = carroRepository.findById(carroId);
