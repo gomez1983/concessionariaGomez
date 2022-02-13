@@ -1,5 +1,6 @@
 package com.concessionaria.gomez.domain.service;
 
+import com.concessionaria.gomez.domain.exception.CarroNaoEncontradoException;
 import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
 import com.concessionaria.gomez.domain.exception.EntidadeNaoEncontradaException;
 import com.concessionaria.gomez.domain.model.Carro;
@@ -11,6 +12,16 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class CadastroCarroService {
+
+    /********Começo de mensagens CONSTANTS *********/
+
+    private static final String MSG_CARRO_EM_USO
+            = "Carro de código %d não pode ser removido, pois está em uso";
+
+    private static final String MSG_CARRO_NAO_ENCONTRADO
+            = "Não existe um cadastro de carro com código %d";
+
+    /********Fim de mensagens CONSTANTS *********/
 
     @Autowired
     private CarroRepository carroRepository;
@@ -33,4 +44,9 @@ public class CadastroCarroService {
         }
     }
 
+    public Carro buscarOuFalhar(Long carroId) {
+        return carroRepository.findById(carroId)
+                .orElseThrow(() -> new CarroNaoEncontradoException(
+                        String.format(MSG_CARRO_NAO_ENCONTRADO, carroId)));
+    }
 }

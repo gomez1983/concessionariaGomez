@@ -30,13 +30,13 @@ public class CarroController {
     private CadastroCarroService cadastroCarro;
 
     @GetMapping
-    @ApiOperation(value="Método para listar veículos")
+    @ApiOperation(value = "Método para listar veículos")
     public List<Carro> listar() {
         return carroRepository.findAll();
     }
 
     @GetMapping("/{carroId}")
-    @ApiOperation(value="Retorna um veículo único")
+    @ApiOperation(value = "Retorna um veículo único")
     public ResponseEntity<Carro> buscar(@PathVariable Long carroId) {
         Optional<Carro> carro = carroRepository.findById(carroId);
 
@@ -49,40 +49,26 @@ public class CarroController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @ApiOperation(value="Salva um veículo")
+    @ApiOperation(value = "Salva um veículo")
     public Carro adicionar(@RequestBody Carro carro) {
         return cadastroCarro.salvar(carro);
     }
 
     @PutMapping("/{carroId}")
-    @ApiOperation(value="Altera dados de um veículo")
-    public ResponseEntity<Carro> atualizar(@PathVariable Long carroId,
-                                             @RequestBody Carro carro) {
-        Optional<Carro> carroAtual = carroRepository.findById(carroId);
+    @ApiOperation(value = "Altera dados de um veículo")
+    public Carro atualizar(@PathVariable Long carroId,
+                           @RequestBody Carro carro) {
 
-        if (carroAtual.isPresent()) {
-            BeanUtils.copyProperties(carro, carroAtual.get(), "id");
+        Carro carroAtual = cadastroCarro.buscarOuFalhar(carroId);
 
-            Carro carroSalvo = cadastroCarro.salvar(carroAtual.get());
-            return ResponseEntity.ok(carroSalvo);
-        }
+        BeanUtils.copyProperties(carro, carroAtual, "id");
 
-        return ResponseEntity.notFound().build();
+        return cadastroCarro.salvar(carroAtual);
     }
 
     @DeleteMapping("/{carroId}")
-    @ApiOperation(value="Remove um veículo")
-    public ResponseEntity<?> remover(@PathVariable Long carroId) {
-        try {
-            cadastroCarro.excluir(carroId);
-            return ResponseEntity.noContent().build();
-
-        } catch (EntidadeNaoEncontradaException e) {
-            return ResponseEntity.notFound().build();
-
-        } catch (EntidadeEmUsoException e) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(e.getMessage());
-        }
+    @ApiOperation(value = "Remove um veículo")
+    public void remover (@PathVariable Long carroId){
+        cadastroCarro.excluir(carroId);
     }
 }
