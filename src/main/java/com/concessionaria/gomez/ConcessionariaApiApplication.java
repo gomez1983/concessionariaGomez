@@ -3,11 +3,13 @@ package com.concessionaria.gomez;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import java.util.TimeZone;
+
 @SpringBootApplication
 public class ConcessionariaApiApplication {
 
 	public static void main(String[] args) {
-			SpringApplication.run(ConcessionariaApiApplication.class, args);
+		TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+		SpringApplication.run(ConcessionariaApiApplication.class, args);
 	}
-
 }
