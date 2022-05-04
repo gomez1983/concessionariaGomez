@@ -3,8 +3,10 @@ package com.concessionaria.gomez.domain.model;
 import com.fasterxml.jackson.annotation.JsonRootName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
+import java.time.OffsetDateTime;
 
 
 @Data
@@ -28,4 +30,9 @@ public class Carro {
 
     @Column(nullable = false)
     private double compra;
+
+    //Atributo adicionado. Corrigir saída no Postman
+    @CreationTimestamp
+    @Column(nullable = false, columnDefinition = "datetime")
+    private OffsetDateTime dataCompra;
 }

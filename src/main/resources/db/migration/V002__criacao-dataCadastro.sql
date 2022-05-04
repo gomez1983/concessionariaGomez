@@ -1,0 +1,1 @@
+alter table carro add dataCompra datetime not null
