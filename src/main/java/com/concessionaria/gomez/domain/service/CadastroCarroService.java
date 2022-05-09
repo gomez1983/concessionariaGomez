@@ -47,6 +47,6 @@ public class CadastroCarroService {
     public Carro buscarOuFalhar(Long carroId) {
         return carroRepository.findById(carroId)
                 .orElseThrow(() -> new CarroNaoEncontradoException(
-                        String.format(MSG_CARRO_NAO_ENCONTRADO, carroId)));
+                        String.format(MSG_CARRO_NAO_ENCONTRADO,carroId)));
     }
 }
