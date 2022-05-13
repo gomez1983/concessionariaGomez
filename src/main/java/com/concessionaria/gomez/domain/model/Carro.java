@@ -33,6 +33,6 @@ public class Carro {
 
     //Atributo adicionado. Corrigir saída no Postman
     @CreationTimestamp
-    @Column(nullable = false, columnDefinition = "datetime")
+    @Column(name = "datacompra", nullable = false, columnDefinition = "datetime")
     private OffsetDateTime dataCompra;
 }

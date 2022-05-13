@@ -73,14 +73,11 @@ public class CarroController {
     public CarroModel atualizar(@PathVariable Long carroId,
                                 @RequestBody @Valid CarroInput carroInput) {
         try {
-            Carro restaurante = carroInputDisassembler.toDomainObject(carroInput);
+            Carro carroAtual = cadastroCarro.buscarOuFalhar(carroId);
 
-            Carro restauranteAtual = cadastroCarro.buscarOuFalhar(carroId);
+            carroInputDisassembler.toDomainObject(carroInput);
 
-            BeanUtils.copyProperties(restaurante, restauranteAtual,
-                    "id", "formasPagamento", "endereco", "dataCadastro", "produtos");
-
-            return carroModelAssembler.toModel(cadastroCarro.salvar(restauranteAtual));
+            return carroModelAssembler.toModel(cadastroCarro.salvar(carroAtual));
         } catch (CarroNaoEncontradoException e) {
             throw new NegocioException(e.getMessage());
         }

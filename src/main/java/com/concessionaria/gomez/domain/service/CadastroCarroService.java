@@ -33,6 +33,7 @@ public class CadastroCarroService {
     public void excluir(Long carroId) {
         try {
             carroRepository.deleteById(carroId);
+            carroRepository.flush();
 
         } catch (EmptyResultDataAccessException e) {
             throw new EntidadeNaoEncontradaException(

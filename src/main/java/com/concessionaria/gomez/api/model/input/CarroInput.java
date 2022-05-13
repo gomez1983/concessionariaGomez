@@ -1,5 +1,6 @@
 package com.concessionaria.gomez.api.model.input;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -16,12 +17,12 @@ public class CarroInput {
     @NotBlank
     private String modelo;
 
-    @NotBlank
+    @NotNull
     private int ano;
 
-    @NotBlank
+    @NotNull
     private double compra;
 
+    @NotNull
     private OffsetDateTime dataCompra;
-
 }
