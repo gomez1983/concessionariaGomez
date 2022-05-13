@@ -35,4 +35,5 @@ public class Carro {
     @CreationTimestamp
     @Column(name = "datacompra", nullable = false, columnDefinition = "datetime")
     private OffsetDateTime dataCompra;
+
 }

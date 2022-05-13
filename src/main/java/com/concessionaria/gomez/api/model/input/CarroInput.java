@@ -11,18 +11,17 @@ import java.time.OffsetDateTime;
 @Setter
 public class CarroInput {
 
-    @NotBlank
+    @NotBlank // Para objetos que sejam do tipo String, deve-se utilizar NotBlank
     private String marca;
 
-    @NotBlank
+    @NotBlank // Para objetos que sejam do tipo String, deve-se utilizar NotBlank
     private String modelo;
 
-    @NotNull
-    private int ano;
+    @NotNull // Para objetos que não sejam do tipo String, deve-se utilizar NotNUll
+    private Integer ano; //Utilizar o Integer (classe) no lugar de int
 
-    @NotNull
-    private double compra;
+    @NotNull // Para objetos que não sejam do tipo String, deve-se utilizar NotNUll
+    private Double compra; //Utilizar o Double (classe) no lugar de double
 
-    @NotNull
     private OffsetDateTime dataCompra;
 }
