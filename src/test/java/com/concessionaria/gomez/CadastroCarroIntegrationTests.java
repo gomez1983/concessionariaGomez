@@ -52,4 +52,14 @@ class CadastroCarroIntegrationTests {
         // validação
         assertThat(erroEsperado).isNotNull();
     }
+
+    @Test
+    public void deveFalhar_QuandoExcluirCarroEmUso() {
+        cadastroCarro.excluir(1L);
+    }
+
+    @Test
+    public void deveFalhar_QuandoExcluirCarroInexistente(){
+        cadastroCarro.excluir(15L);
+    }
 }
