@@ -1,11 +1,11 @@
 package com.concessionaria.gomez.domain.model;
 
-import com.fasterxml.jackson.annotation.JsonRootName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotBlank;
 import java.time.OffsetDateTime;
 
 
@@ -23,6 +23,7 @@ public class Carro {
     private String marca;
 
     @Column(nullable = false)
+    @NotBlank //Adicionada anotação para que o teste de integração de cadastro Null funcione
     private String modelo;
 
     @Column(nullable = false)
