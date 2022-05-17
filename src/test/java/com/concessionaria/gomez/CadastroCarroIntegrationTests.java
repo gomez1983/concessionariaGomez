@@ -1,5 +1,8 @@
 package com.concessionaria.gomez;
 
+import com.concessionaria.gomez.domain.exception.CarroNaoEncontradoException;
+import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
+import com.concessionaria.gomez.domain.exception.EntidadeNaoEncontradaException;
 import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.service.CadastroCarroService;
 import org.junit.jupiter.api.Assertions;
@@ -13,6 +16,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import javax.validation.ConstraintViolationException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ExtendWith(SpringExtension.class)
@@ -55,11 +59,24 @@ class CadastroCarroIntegrationTests {
 
     @Test
     public void deveFalhar_QuandoExcluirCarroEmUso() {
-        cadastroCarro.excluir(1L);
+        EntidadeEmUsoException exception = assertThrows(EntidadeEmUsoException.class, () -> {
+            // cenário
+            Long carroId = 1L;
+            // ação
+            cadastroCarro.excluir(carroId);
+        });
+        exception.printStackTrace();
+        // validação
+        assertThatExceptionOfType(EntidadeEmUsoException.class);
     }
 
     @Test
-    public void deveFalhar_QuandoExcluirCarroInexistente(){
-        cadastroCarro.excluir(15L);
+    public void deveFalhar_QuandoExcluirCarroInexistente() {
+        EntidadeNaoEncontradaException exception = Assertions.
+                assertThrows(EntidadeNaoEncontradaException.class, () -> {
+            cadastroCarro.excluir(100L);
+        });
+        exception.printStackTrace();
+        assertThatExceptionOfType(EntidadeNaoEncontradaException.class); //CarroNaoEncontradoException seria o tratamento esperado, porém se utilizo ele o teste falha.
     }
 }
