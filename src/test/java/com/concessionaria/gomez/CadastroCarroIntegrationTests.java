@@ -27,6 +27,9 @@ class CadastroCarroIntegrationTests {
         // cenário
         Carro novoCarro = new Carro();
         novoCarro.setMarca("Ford");
+        novoCarro.setModelo("Fusion");
+        novoCarro.setAno(2011);
+        novoCarro.setCompra(65000);
 
         // ação
         novoCarro = cadastroCarro.salvar(novoCarro);
