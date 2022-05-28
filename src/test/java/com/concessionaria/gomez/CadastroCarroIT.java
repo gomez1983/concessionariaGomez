@@ -3,6 +3,7 @@ package com.concessionaria.gomez;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.hamcrest.Matchers;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,13 +18,16 @@ public class CadastroCarroIT {
     @LocalServerPort
     private int port;
 
+    @BeforeEach
+    public void setUp(){
+        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+        RestAssured.port = port;
+        RestAssured.basePath = "/carros";
+    }
+
     @Test
     public void deveRetornarStatus200_QuandoConsultarCarros() {
-        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-
         RestAssured.given()
-                .basePath("/carros")
-                .port(port)
                 .accept(ContentType.JSON)
             .when()
                 .get()
@@ -35,16 +39,24 @@ public class CadastroCarroIT {
 
     @Test
     public void deveConter14Carros() {
-        RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
-
         RestAssured.given()
-                .basePath("/carros")
-                .port(port)
-                .accept(ContentType.JSON)
+            .accept(ContentType.JSON)
         .when()
-                .get()
+            .get()
         .then()
-                .body("", Matchers.hasSize(14))
-                .body("modelo", Matchers.hasItems("Fiesta", "ASX"));
+            .body("", Matchers.hasSize(14));
+            /*.body("modelo", Matchers.hasItems("Fiesta", "ASX")); ---  Exemplos com outros filtros*/
+    }
+
+    @Test
+    public void deveRetornarStatus201_QuandoCadastrarCarro() {
+        RestAssured.given()
+                .body("{\"marca\": \"Ford\", \"modelo\" : \"Escort\", \"compra\" : \"24300\", \"ano\" : \"1997\"}")
+                .contentType(ContentType.JSON)
+                .accept(ContentType.JSON)
+            .when()
+                .post()
+            .then()
+                .statusCode(HttpStatus.CREATED.value());
     }
 }
