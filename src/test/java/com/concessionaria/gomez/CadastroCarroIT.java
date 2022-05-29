@@ -1,8 +1,9 @@
 package com.concessionaria.gomez;
 
+import com.concessionaria.gomez.domain.model.Carro;
+import com.concessionaria.gomez.domain.repository.CarroRepository;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
-import org.flywaydb.core.Flyway;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,17 +12,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import com.concessionaria.gomez.util.DatabaseCleaner;
 
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestPropertySource("/application-test.properties")
 public class CadastroCarroIT {
 
     @LocalServerPort
     private int port;
 
     @Autowired
-    private Flyway flyway;
+    private DatabaseCleaner databaseCleaner;
+
+    @Autowired
+    private CarroRepository carroRepository;
 
     @BeforeEach
     public void setUp(){
@@ -29,7 +36,8 @@ public class CadastroCarroIT {
         RestAssured.port = port;
         RestAssured.basePath = "/carros";
 
-        flyway.migrate();
+        databaseCleaner.clearTables();
+        prepararDados();
     }
 
     @Test
@@ -42,16 +50,14 @@ public class CadastroCarroIT {
                 .statusCode(HttpStatus.OK.value());
     }
 
-    /*Método para validação do corpo de resposta*/
-
     @Test
-    public void deveConter14Carros() {
+    public void deveConter2Carros_QuandoConsultarCarros() { /*Método para validação do corpo de resposta*/
         RestAssured.given()
             .accept(ContentType.JSON)
         .when()
             .get()
         .then()
-            .body("", Matchers.hasSize(14));
+            .body("", Matchers.hasSize(2));
             /*.body("modelo", Matchers.hasItems("Fiesta", "ASX")); ---  Exemplos com outros filtros*/
     }
 
@@ -65,5 +71,23 @@ public class CadastroCarroIT {
                 .post()
             .then()
                 .statusCode(HttpStatus.CREATED.value());
+    }
+
+    /*------------- Método para inserir massas de dados para os testes rodarem ----------*/
+
+    private void prepararDados(){
+        Carro carro1 = new Carro();
+        carro1.setMarca("Honda");
+        carro1.setModelo("Civic");
+        carro1.setAno(2018);
+        carro1.setCompra(98000.00);
+        carroRepository.save(carro1);
+
+        Carro carro2 = new Carro();
+        carro2.setMarca("Audi");
+        carro2.setModelo("A4");
+        carro2.setAno(2022);
+        carro2.setCompra(15000.00);
+        carroRepository.save(carro2);
     }
 }

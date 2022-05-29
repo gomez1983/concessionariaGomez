@@ -27,10 +27,10 @@ public class Carro {
     private String modelo;
 
     @Column(nullable = false)
-    private int ano;
+    private Integer ano;
 
     @Column(nullable = false)
-    private double compra;
+    private Double compra;
 
     //Atributo adicionado. Corrigir saída no Postman
     @CreationTimestamp
