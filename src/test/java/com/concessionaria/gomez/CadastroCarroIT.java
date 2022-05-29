@@ -2,10 +2,12 @@ package com.concessionaria.gomez;
 
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import org.flywaydb.core.Flyway;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
@@ -18,11 +20,16 @@ public class CadastroCarroIT {
     @LocalServerPort
     private int port;
 
+    @Autowired
+    private Flyway flyway;
+
     @BeforeEach
     public void setUp(){
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
         RestAssured.port = port;
         RestAssured.basePath = "/carros";
+
+        flyway.migrate();
     }
 
     @Test
