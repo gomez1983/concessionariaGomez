@@ -15,6 +15,12 @@ public class CarroModel { //DTO
     private int ano;
     private double compra;
     private OffsetDateTime dataCompra;
-}
+    private double venda;
+
     /*O método de soma da porcentagem da concessionária pode ser feito aqui
     ou pode ser criada uma nova classe DTO de Carro para isso.*/
+
+    public double getVenda() {
+        return Math.floor((this.compra * 1.10) * 100) / 100;
+    }
+}

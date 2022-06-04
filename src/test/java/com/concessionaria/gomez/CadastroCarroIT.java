@@ -86,7 +86,7 @@ public class CadastroCarroIT {
     }
 
     @Test
-    public void deveRetornarRespostasEStratusCorretos_QuandoConsultarCarroExistente(){
+    public void deveRetornarRespostasEStatusCorretos_QuandoConsultarCarroExistente(){
         RestAssured.given()
             .pathParam("carroId", carroMercedes.getId())
             .accept(ContentType.JSON)

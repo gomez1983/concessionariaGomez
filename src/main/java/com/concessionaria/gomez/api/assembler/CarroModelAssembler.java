@@ -2,6 +2,8 @@ package com.concessionaria.gomez.api.assembler;
 
 import com.concessionaria.gomez.api.model.CarroModel;
 import com.concessionaria.gomez.domain.model.Carro;
+import org.modelmapper.Converter;
+import org.modelmapper.TypeMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.modelmapper.ModelMapper;
@@ -24,4 +26,5 @@ public class CarroModelAssembler {
                 .map(carro -> toModel(carro))
                 .collect(Collectors.toList());
     }
+
 }
