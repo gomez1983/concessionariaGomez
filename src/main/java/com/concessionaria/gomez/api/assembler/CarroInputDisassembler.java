@@ -16,4 +16,8 @@ public class CarroInputDisassembler {
     public Carro toDomainObject(CarroInput carroInput) {
         return modelMapper.map(carroInput, Carro.class);
     }
+
+    public void copyToDomaininObject(CarroInput carroInput, Carro carro){
+        modelMapper.map(carroInput, carro);
+    }
 }

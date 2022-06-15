@@ -26,5 +26,4 @@ public class CarroModelAssembler {
                 .map(carro -> toModel(carro))
                 .collect(Collectors.toList());
     }
-
 }

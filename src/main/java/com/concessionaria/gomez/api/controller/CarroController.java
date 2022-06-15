@@ -75,7 +75,10 @@ public class CarroController {
         try {
             Carro carroAtual = cadastroCarro.buscarOuFalhar(carroId);
 
-            carroInputDisassembler.toDomainObject(carroInput);
+            // 1
+            Carro carro = carroInputDisassembler.toDomainObject(carroInput);
+            // 2
+            BeanUtils.copyProperties(carro, carroAtual, "id");
 
             return carroModelAssembler.toModel(cadastroCarro.salvar(carroAtual));
         } catch (CarroNaoEncontradoException e) {

@@ -37,4 +37,8 @@ public class Carro {
     @Column(name = "datacompra", nullable = false, columnDefinition = "datetime")
     private OffsetDateTime dataCompra;
 
+    @PreUpdate
+    private void setData() {
+        this.dataCompra = OffsetDateTime.now();
+    }
 }
