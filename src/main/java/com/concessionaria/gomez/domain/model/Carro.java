@@ -32,6 +32,8 @@ public class Carro {
     @Column(nullable = false)
     private Double compra;
 
+    private Boolean ativo = Boolean.TRUE;
+
     //Atributo adicionado. Corrigir saída no Postman
     @CreationTimestamp
     @Column(name = "datacompra", nullable = false, columnDefinition = "datetime")
@@ -40,5 +42,13 @@ public class Carro {
     @PreUpdate
     private void setData() {
         this.dataCompra = OffsetDateTime.now();
+    }
+
+    public void ativar() {
+        setAtivo(true);
+    }
+
+    public void inativar() {
+        setAtivo(false);
     }
 }

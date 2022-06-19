@@ -47,6 +47,20 @@ public class CadastroCarroService {
         }
     }
 
+    @Transactional
+    public void ativar(Long carroId) {
+        Carro carroAtual = buscarOuFalhar(carroId);
+
+        carroAtual.ativar();
+    }
+
+    @Transactional
+    public void inativar(Long carroId) {
+        Carro carroAtual = buscarOuFalhar(carroId);
+
+        carroAtual.inativar();
+    }
+
     public Carro buscarOuFalhar(Long carroId) {
         return carroRepository.findById(carroId)
                 .orElseThrow(() -> new CarroNaoEncontradoException(

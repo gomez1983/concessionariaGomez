@@ -86,6 +86,21 @@ public class CarroController {
         }
     }
 
+    // PUT /carros/{id}/ativo - vai ativar o carro
+    // DELETE /carros/{id}/ativo - vai inativar o carro
+
+    @PutMapping("/{carroId}/ativo")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void ativar(@PathVariable Long carroId) {
+        cadastroCarro.ativar(carroId);
+    }
+
+    @DeleteMapping("/{carroId}/ativo")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void inativar(@PathVariable Long carroId) {
+        cadastroCarro.inativar(carroId);
+    }
+
     @DeleteMapping("/{carroId}")
     @ApiOperation(value = "Remove um veículo")
     public void remover (@PathVariable Long carroId){

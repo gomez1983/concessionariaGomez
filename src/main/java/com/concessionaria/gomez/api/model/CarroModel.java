@@ -16,6 +16,7 @@ public class CarroModel { //DTO
     private double compra;
     private OffsetDateTime dataCompra;
     private double venda;
+    private Boolean ativo;
 
     /*O método de soma da porcentagem da concessionária pode ser feito aqui
     ou pode ser criada uma nova classe DTO de Carro para isso.*/
