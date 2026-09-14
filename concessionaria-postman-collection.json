@@ -1,0 +1,133 @@
+{
+  "info": {
+    "_postman_id": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
+    "name": "Concessionaria Gomez API",
+    "description": "Coleção completa dos endpoints CRUD para a API de Concessionária Gomez",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Listar Carros",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"]
+        },
+        "description": "Retorna todos os veículos cadastrados no banco."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Buscar Carro por ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros/1",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros", "1"]
+        },
+        "description": "Busca os detalhes de um veículo específico por ID."
+      },
+      "response": []
+    },
+    {
+      "name": "3. Cadastrar Carro",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Corolla\",\n  \"ano\": 2022,\n  \"compra\": 120000.0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/carros",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"]
+        },
+        "description": "Cadastra um novo veículo no estoque."
+      },
+      "response": []
+    },
+    {
+      "name": "4. Atualizar Carro",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Chevette SL\",\n  \"ano\": 1989,\n  \"compra\": 18000.0\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/carros/1",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros", "1"]
+        },
+        "description": "Atualiza os dados de um veículo existente."
+      },
+      "response": []
+    },
+    {
+      "name": "5. Ativar Carro",
+      "request": {
+        "method": "PUT",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros/1/ativo",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros", "1", "ativo"]
+        },
+        "description": "Ativa o veículo no sistema."
+      },
+      "response": []
+    },
+    {
+      "name": "6. Inativar Carro",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros/1/ativo",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros", "1", "ativo"]
+        },
+        "description": "Inativa o veículo sem deletá-lo."
+      },
+      "response": []
+    },
+    {
+      "name": "7. Excluir Carro",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros/14",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros", "14"]
+        },
+        "description": "Remove fisicamente um veículo do banco."
+      },
+      "response": []
+    }
+  ]
+}
