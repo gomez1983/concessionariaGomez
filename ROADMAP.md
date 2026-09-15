@@ -31,7 +31,7 @@ graph TD
   - Substituir tipos primitivos de ponto flutuante binário por `BigDecimal` nos campos de valor (`compra` e `venda`).
   - Evitar dízimas e imprecisões contábeis no arredondamento financeiro.
   - Migration Flyway `V004__altera-compra-para-decimal.sql` adicionada.
-- [ ] **Extração da Regra de Negócio de Venda:**
+- [x] **Extração da Regra de Negócio de Venda:**
   - Mover o cálculo da margem de 10% de `CarroModel.java` (camada de apresentação/DTO) para o domínio (`Carro.java` ou `CalculadoraMargemService`).
   - Permitir parametrização futura da margem de lucro por veículo ou categoria.
 - [ ] **Revisão dos Testes de Integração:**
@@ -92,7 +92,7 @@ graph TD
 - [ ] **Dockerfile Multi-Stage para o Spring Boot:**
   - Criação do `Dockerfile` otimizado para compilar e empacotar a aplicação em imagem leve (Alpine/Distroless).
 - [ ] **Docker Compose Unificado:**
-  - Expandir o `docker-compose.yml` para subir a aplicação Java + Frontend + MySQL juntos em um único comando `docker compose up -d`.
+  - Expandir o `docker-compose.yml` para subir a aplicação Java + Frontend + MySQL juntos em um único comando `docker compose up -d` faz tudo.
 - [ ] **CI/CD Básico (GitHub Actions):**
   - Pipeline automático para compilar, rodar testes e verificar qualidade a cada push.
 
