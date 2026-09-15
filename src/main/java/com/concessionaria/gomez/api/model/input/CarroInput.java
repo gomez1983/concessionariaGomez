@@ -1,10 +1,13 @@
 package com.concessionaria.gomez.api.model.input;
+
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.PositiveOrZero;
 
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Getter
@@ -21,7 +24,8 @@ public class CarroInput {
     private Integer ano; //Utilizar o Integer (classe) no lugar de int
 
     @NotNull // Para objetos que não sejam do tipo String, deve-se utilizar NotNUll
-    private Double compra; //Utilizar o Double (classe) no lugar de double
+    @PositiveOrZero
+    private BigDecimal compra;
 
     private OffsetDateTime dataCompra;
 }

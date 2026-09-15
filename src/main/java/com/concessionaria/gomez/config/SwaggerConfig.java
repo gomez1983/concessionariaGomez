@@ -24,8 +24,6 @@ public class SwaggerConfig {
                 .select()
                 .apis(RequestHandlerSelectors.basePackage("com.concessionaria"))
                 .paths(PathSelectors.regex("/carros.*"))
-                //.paths(PathSelectors.regex("/api.*"))
-                //.paths(regex("/carros.*"))
                 .build()
                 .apiInfo(metaInfo());
     }
@@ -34,12 +32,12 @@ public class SwaggerConfig {
         ApiInfo apiInfo = new ApiInfo(
                 "Concessionária API Rest",
                 "API REST de cadastro de carros.",
-                "1.0",
+                "0.1.0-BETA",
                 "Terms of Service",
                 new Contact("André Gomez", "https://github.com/gomez1983/concessionariaGomez",
                         "andregc1983@gmail.com"),
                 "Apache License Version 2.0",
-                "https//www.apache.org/licensen.html", new ArrayList<VendorExtension>()
+                "https://www.apache.org/licenses/LICENSE-2.0", new ArrayList<VendorExtension>()
         );
 
         return apiInfo;

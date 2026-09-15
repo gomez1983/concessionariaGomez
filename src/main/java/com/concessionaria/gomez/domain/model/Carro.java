@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import javax.persistence.*;
 import javax.validation.constraints.NotBlank;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 
@@ -30,7 +31,7 @@ public class Carro {
     private Integer ano;
 
     @Column(nullable = false)
-    private Double compra;
+    private BigDecimal compra;
 
     private Boolean ativo = Boolean.TRUE;
 

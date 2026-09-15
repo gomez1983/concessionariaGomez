@@ -19,6 +19,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import com.concessionaria.gomez.util.DatabaseCleaner;
 
+import java.math.BigDecimal;
+
 @ExtendWith(SpringExtension.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource("/application-test.properties")
@@ -115,14 +117,14 @@ public class CadastroCarroIT {
         carroMercedes.setMarca("Mercedes");
         carroMercedes.setModelo("Classe A");
         carroMercedes.setAno(2022);
-        carroMercedes.setCompra(319900.00);
+        carroMercedes.setCompra(new BigDecimal("319900.00"));
         carroRepository.save(carroMercedes);
 
         Carro carroBMW = new Carro();
         carroBMW.setMarca("BMW");
         carroBMW.setModelo("M5");
         carroBMW.setAno(2018);
-        carroBMW.setCompra(150000.00);
+        carroBMW.setCompra(new BigDecimal("150000.00"));
         carroRepository.save(carroBMW);
 
         quantidadeCarrosCadastrados = (int) carroRepository.count();

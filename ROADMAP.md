@@ -5,8 +5,8 @@ Documento criado em **13/09/2026** consolidando o diagnóstico atual da aplicaç
 ---
 
 ## 📌 Status Atual do Projeto (Baseline)
-- [x] **Ambiente Local:** Java 21 + MySQL 8.0 rodando isolado via Docker (`docker-compose.yml`).
-- [x] **Gerenciador de Banco:** DBeaver Community conectado e operacional.
+- [x] **Ambiente Local:** Java 21 + MySQL 8.0 rodando isolado via Docker (`docker-compose.yml` na porta `3307`).
+- [x] **Gerenciador de Banco:** DBeaver Community conectado e operacional (porta `3307`).
 - [x] **Framework:** Spring Boot 2.6.2 com Maven.
 - [x] **Banco & Migrations:** Flyway gerenciando scripts com carga de testes automática (`afterMigrate.sql`).
 - [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo.
@@ -27,9 +27,10 @@ graph TD
 ---
 
 ### 🔹 Fase 1: Qualidade de Código & Precisão Financeira (Quick Wins)
-- [ ] **Migração de `Double`/`double` para `BigDecimal`:**
+- [x] **Migração de `Double`/`double` para `BigDecimal`:**
   - Substituir tipos primitivos de ponto flutuante binário por `BigDecimal` nos campos de valor (`compra` e `venda`).
   - Evitar dízimas e imprecisões contábeis no arredondamento financeiro.
+  - Migration Flyway `V004__altera-compra-para-decimal.sql` adicionada.
 - [ ] **Extração da Regra de Negócio de Venda:**
   - Mover o cálculo da margem de 10% de `CarroModel.java` (camada de apresentação/DTO) para o domínio (`Carro.java` ou `CalculadoraMargemService`).
   - Permitir parametrização futura da margem de lucro por veículo ou categoria.
