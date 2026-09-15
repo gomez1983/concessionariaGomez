@@ -43,9 +43,13 @@ public class CarroController {
     private CarroInputDisassembler carroInputDisassembler;
 
     @GetMapping
-    @ApiOperation(value = "Método para listar veículos")
-    public List<CarroModel> listar() {
-        return carroModelAssembler.toCollectionModel(carroRepository.findAll());
+    @ApiOperation(value = "Método para listar veículos (opcionalmente filtrados por ano)")
+    public List<CarroModel> listar(@RequestParam(required = false) Integer ano) {
+        List<Carro> carros = (ano != null)
+                ? carroRepository.findByAno(ano)
+                : carroRepository.findAll();
+
+        return carroModelAssembler.toCollectionModel(carros);
     }
 
     @GetMapping("/{carroId}")

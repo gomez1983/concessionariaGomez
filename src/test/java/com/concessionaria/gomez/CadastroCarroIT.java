@@ -65,7 +65,7 @@ public class CadastroCarroIT {
     }
 
     @Test
-    public void deveRetornarQuantidadeCorretaDeCarros_QuandoConsultarCarros() { /*Método para validação do corpo de resposta*/
+    public void deveRetornarQuantidadeCorretaDeCarros_QuandoConsultarCarros() { /*Metodo para validação do corpo de resposta*/
         RestAssured.given()
             .accept(ContentType.JSON)
         .when()
@@ -100,7 +100,7 @@ public class CadastroCarroIT {
     }
 
     @Test
-    public void deveRetorbarStatus404_QuandoConsultarcarroInexistente(){
+    public void deveRetornarStatus404_QuandoConsultarcarroInexistente(){
         RestAssured.given()
             .pathParam("carroId", CARRO_ID_INEXISTENTE)
             .accept(ContentType.JSON)
@@ -110,7 +110,7 @@ public class CadastroCarroIT {
             .statusCode(HttpStatus.NOT_FOUND.value());
     }
 
-    /*------------- Método para inserir massas de dados para os testes rodarem ----------*/
+    /*------------- Metodo para inserir massas de dados para os testes rodarem ----------*/
 
     private void prepararDados(){
         carroMercedes = new Carro();

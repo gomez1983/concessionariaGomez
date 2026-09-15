@@ -76,6 +76,8 @@ graph TD
 ---
 
 ### 🔹 Fase 5: Frontend Moderno (Painel do Funcionário)
+- [ ] **Mockup de Interface (UI Concept):**
+  - Visualização conceitual salva em [concessionaria-dashboard-ui.png](file:///C:/Projetos/concessionaria/concessionaria-dashboard-ui.png).
 - [ ] **Tecnologia recomendada: React (Vite + TypeScript) ou Angular / Vue / Tailwind CSS:**
   - Interface SPA (Single Page Application) limpa, responsiva e com visual profissional.
 - [ ] **Dashboard Principal:**

@@ -28,6 +28,27 @@
       "response": []
     },
     {
+      "name": "1.1 Filtrar Carros por Ano",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?ano=2007",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "ano",
+              "value": "2007",
+              "description": "Filtro opcional pelo ano de fabricação"
+            }
+          ]
+        },
+        "description": "Filtra os veículos pelo ano informado."
+      },
+      "response": []
+    },
+    {
       "name": "2. Buscar Carro por ID",
       "request": {
         "method": "GET",
@@ -91,7 +112,12 @@
       "name": "5. Ativar Carro",
       "request": {
         "method": "PUT",
-        "header": [],
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
         "url": {
           "raw": "{{baseUrl}}/carros/1/ativo",
           "host": ["{{baseUrl}}"],
