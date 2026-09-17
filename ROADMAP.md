@@ -34,8 +34,18 @@ graph TD
 - [x] **Extração da Regra de Negócio de Venda:**
   - Mover o cálculo da margem de 10% de `CarroModel.java` (camada de apresentação/DTO) para o domínio (`Carro.java` ou `CalculadoraMargemService`).
   - Permitir parametrização futura da margem de lucro por veículo ou categoria.
-- [ ] **Revisão dos Testes de Integração:**
-  - Rodar e atualizar os testes existentes em `src/test/java` com REST-Assured para garantir cobertura antes das refatorações maiores.
+- [x] **Revisão e Expansão dos Testes de Integração:**
+  - Testes unitários (`CarroTest`, `CarroModelAssemblerTest`) validados.
+  - Suite de testes de integração com REST-Assured em `CadastroCarroIT.java` expandida para cobrir 100% dos fluxos CRUD e regras de negócio:
+    - `GET /carros` (listagem completa e contagem)
+    - `GET /carros?ano={ano}` (filtro por ano)
+    - `GET /carros/{id}` (sucesso e 404 para ID inexistente)
+    - Validação de cálculo da margem sugerida de 10% no endpoint de busca
+    - `POST /carros` (cadastro com sucesso 201 e validação de schema 400 Bad Request)
+    - `PUT /carros/{id}` (atualização completa 200)
+    - `PUT /carros/{id}/ativo` (ativação 204 No Content)
+    - `DELETE /carros/{id}/ativo` (inativação 204 No Content)
+    - `DELETE /carros/{id}` (exclusão física 204 No Content e validação 404)
 
 ---
 

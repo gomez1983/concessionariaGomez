@@ -72,6 +72,7 @@ public class CarroController {
             throw new NegocioException(e.getMessage());
         }
     }
+
     @PutMapping("/{carroId}")
     @ApiOperation(value = "Altera dados de um veículo")
     public CarroModel atualizar(@PathVariable Long carroId,
@@ -106,6 +107,7 @@ public class CarroController {
     }
 
     @DeleteMapping("/{carroId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
     @ApiOperation(value = "Remove um veículo")
     public void remover (@PathVariable Long carroId){
         cadastroCarro.excluir(carroId);
