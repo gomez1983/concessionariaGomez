@@ -5,28 +5,22 @@ import com.concessionaria.gomez.api.assembler.CarroModelAssembler;
 import com.concessionaria.gomez.api.model.CarroModel;
 import com.concessionaria.gomez.api.model.input.CarroInput;
 import com.concessionaria.gomez.domain.exception.CarroNaoEncontradoException;
-import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
-import com.concessionaria.gomez.domain.exception.EntidadeNaoEncontradaException;
 import com.concessionaria.gomez.domain.exception.NegocioException;
 import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.repository.CarroRepository;
 import com.concessionaria.gomez.domain.service.CadastroCarroService;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import org.springframework.beans.BeanUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping(value = "/carros")
-@Api(value = "API REST Concessionária Gomez")
+@Tag(name = "Carros", description = "Gerenciamento de veículos da Concessionária Gomez")
 @CrossOrigin(origins = "*")
 public class CarroController {
 
@@ -43,7 +37,7 @@ public class CarroController {
     private CarroInputDisassembler carroInputDisassembler;
 
     @GetMapping
-    @ApiOperation(value = "Método para listar veículos (opcionalmente filtrados por ano)")
+    @Operation(summary = "Método para listar veículos (opcionalmente filtrados por ano)")
     public List<CarroModel> listar(@RequestParam(required = false) Integer ano) {
         List<Carro> carros = (ano != null)
                 ? carroRepository.findByAno(ano)
@@ -53,7 +47,7 @@ public class CarroController {
     }
 
     @GetMapping("/{carroId}")
-    @ApiOperation(value = "Retorna um veículo único")
+    @Operation(summary = "Retorna um veículo único")
     public CarroModel buscar(@PathVariable Long carroId) {
         Carro carro = cadastroCarro.buscarOuFalhar(carroId);
 
@@ -62,7 +56,7 @@ public class CarroController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @ApiOperation(value = "Salva um veículo")
+    @Operation(summary = "Salva um veículo")
     public CarroModel adicionar(@RequestBody @Valid CarroInput carroInput) {
         try {
             Carro carro = carroInputDisassembler.toDomainObject(carroInput);
@@ -74,16 +68,13 @@ public class CarroController {
     }
 
     @PutMapping("/{carroId}")
-    @ApiOperation(value = "Altera dados de um veículo")
+    @Operation(summary = "Altera dados de um veículo")
     public CarroModel atualizar(@PathVariable Long carroId,
                                 @RequestBody @Valid CarroInput carroInput) {
         try {
             Carro carroAtual = cadastroCarro.buscarOuFalhar(carroId);
 
-            // 1
-            Carro carro = carroInputDisassembler.toDomainObject(carroInput);
-            // 2
-            BeanUtils.copyProperties(carro, carroAtual, "id");
+            carroInputDisassembler.copyToDomainObject(carroInput, carroAtual);
 
             return carroModelAssembler.toModel(cadastroCarro.salvar(carroAtual));
         } catch (CarroNaoEncontradoException e) {
@@ -96,19 +87,21 @@ public class CarroController {
 
     @PutMapping("/{carroId}/ativo")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Ativa um veículo no estoque")
     public void ativar(@PathVariable Long carroId) {
         cadastroCarro.ativar(carroId);
     }
 
     @DeleteMapping("/{carroId}/ativo")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Inativa um veículo no estoque")
     public void inativar(@PathVariable Long carroId) {
         cadastroCarro.inativar(carroId);
     }
 
     @DeleteMapping("/{carroId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @ApiOperation(value = "Remove um veículo")
+    @Operation(summary = "Remove um veículo")
     public void remover (@PathVariable Long carroId){
         cadastroCarro.excluir(carroId);
     }

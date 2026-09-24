@@ -1,11 +1,11 @@
 package com.concessionaria.gomez.domain.model;
 
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.hibernate.annotations.CreationTimestamp;
 
-import javax.persistence.*;
-import javax.validation.constraints.NotBlank;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.OffsetDateTime;
@@ -37,15 +37,9 @@ public class Carro {
 
     private Boolean ativo = Boolean.TRUE;
 
-    //Atributo adicionado. Corrigir saída no Postman
     @CreationTimestamp
-    @Column(name = "datacompra", nullable = false, columnDefinition = "datetime")
+    @Column(name = "datacompra", nullable = false, columnDefinition = "datetime", updatable = false)
     private OffsetDateTime dataCompra;
-
-    @PreUpdate
-    private void setData() {
-        this.dataCompra = OffsetDateTime.now();
-    }
 
     public void ativar() {
         setAtivo(true);

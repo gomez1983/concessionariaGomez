@@ -7,9 +7,10 @@ Documento criado em **13/09/2026** consolidando o diagnóstico atual da aplicaç
 ## 📌 Status Atual do Projeto (Baseline)
 - [x] **Ambiente Local:** Java 21 + MySQL 8.0 rodando isolado via Docker (`docker-compose.yml` na porta `3307`).
 - [x] **Gerenciador de Banco:** DBeaver Community conectado e operacional (porta `3307`).
-- [x] **Framework:** Spring Boot 2.6.2 com Maven.
+- [x] **Framework:** Spring Boot 3.3.4 com Maven e Java 21 nativo.
+- [x] **Documentação da API:** OpenAPI 3 / Swagger UI moderno via SpringDoc em `/swagger-ui/index.html`.
 - [x] **Banco & Migrations:** Flyway gerenciando scripts com carga de testes automática (`afterMigrate.sql`).
-- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo.
+- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo e suite REST-Assured.
 
 ---
 
@@ -49,15 +50,20 @@ graph TD
 
 ---
 
-### 🔹 Fase 2: Modernização do Stack Tecnológico
-- [ ] **Upgrade para Spring Boot 3.x:**
-  - Migrar dependências do ecossistema `javax.*` para `jakarta.*`.
-  - Habilitar suporte nativo a recursos modernos do Java 21 (incluindo *Virtual Threads* para I/O de alta concorrência).
-- [ ] **Substituição do Springfox por SpringDoc (OpenAPI 3 / Swagger Moderno):**
-  - Remover `springfox-swagger2` e `springfox-swagger-ui` (descontinuados).
-  - Adicionar `springdoc-openapi-starter-webmvc-ui` para documentação viva e interativa em `/swagger-ui/index.html`.
-- [ ] **Atualização das dependências auxiliares:**
-  - ModelMapper / MapStruct e drivers atualizados no `pom.xml`.
+### 🔹 Fase 2: Modernização do Stack Tecnológico & Blindagem de Atualizações
+- [x] **Upgrade para Spring Boot 3.3.4 e Java 21:**
+  - Migradas todas as dependências e anotações do ecossistema legado `javax.*` para `jakarta.*` (`jakarta.persistence`, `jakarta.validation`).
+  - Atualizado `ApiExceptionHandler` para suportar `HttpStatusCode` do Spring 6.
+  - Driver MySQL modernizado para `com.mysql:mysql-connector-j` e módulo `flyway-mysql` adicionado.
+- [x] **Substituição do Springfox por SpringDoc (OpenAPI 3 / Swagger Moderno):**
+  - Removido `springfox-swagger2` e `springfox-swagger-ui` (descontinuados).
+  - Adicionado `springdoc-openapi-starter-webmvc-ui` (v2.6.0) para documentação viva e interativa em `/swagger-ui/index.html`.
+  - Migradas anotações nos controllers (`@Tag`, `@Operation`) e configuração simplificada via bean `OpenAPI`.
+- [x] **Atualização das dependências auxiliares e correções estruturais:**
+  - `modelmapper` atualizado para versão `3.2.1` compatível com Java 21.
+  - `lombok` atualizado para `1.18.34`.
+  - Correção na atualização de veículos (`PUT`): implementado `copyToDomainObject` no `CarroInputDisassembler` com `setSkipNullEnabled(true)`, removido `@PreUpdate` indevido e blindado `dataCompra` contra mutações acidentais.
+  - Teste unitário `CarroInputDisassemblerTest` implementado para garantir integridade das mesclagens.
 
 ---
 

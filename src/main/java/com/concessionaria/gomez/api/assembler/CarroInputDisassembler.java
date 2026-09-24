@@ -1,6 +1,5 @@
 package com.concessionaria.gomez.api.assembler;
 
-import com.concessionaria.gomez.api.model.CarroModel;
 import com.concessionaria.gomez.api.model.input.CarroInput;
 import com.concessionaria.gomez.domain.model.Carro;
 import org.modelmapper.ModelMapper;
@@ -17,7 +16,12 @@ public class CarroInputDisassembler {
         return modelMapper.map(carroInput, Carro.class);
     }
 
-    public void copyToDomaininObject(CarroInput carroInput, Carro carro){
+    public void copyToDomainObject(CarroInput carroInput, Carro carro) {
         modelMapper.map(carroInput, carro);
+    }
+
+    @Deprecated
+    public void copyToDomaininObject(CarroInput carroInput, Carro carro) {
+        copyToDomainObject(carroInput, carro);
     }
 }
