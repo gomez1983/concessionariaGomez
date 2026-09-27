@@ -12,11 +12,44 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ### Adicionado
 - **Migração Financeira para `BigDecimal`:**
   - Substituição de `Double`/`double` por `BigDecimal` nas entidades e DTOs (`Carro`, `CarroInput`, `CarroModel`).
-  - Cálculo de margem de venda com precisão decimal (`RoundingMode.HALF_UP`).
-  - Migration Flyway `V004__altera-compra-para-decimal.sql` convertendo o campo `compra` para `decimal(10, 2) not null`.
-- **Suporte a Validação:** Anotação `@PositiveOrZero` no campo `compra` em `CarroInput`.
-- **Documentação:** Criação do `ROADMAP.md` e `CHANGELOG.md`.
+  - Cálculo de margem de venda com precisão decimal e arredondamento padrão bancário (`RoundingMode.HALF_UP`).
+  - Migration Flyway `V004__altera-compra-para-decimal.sql` convertendo a coluna `compra` para `decimal(10, 2) not null`.
+  - *Motivação:* Evitar dízimas periódicas e perda de centavos geradas pelo ponto flutuante binário do `double`, garantindo precisão e conformidade contábil/financeira nos cálculos e persistência.
+- **Extração da Regra de Negócio de Venda para o Domínio:**
+  - Métodos `calcularPrecoVendaSugerido()` centralizados na entidade `Carro`.
+  - *Motivação:* Respeitar o princípio de Modelo Rico (*Rich Domain*) do DDD. DTOs devem apenas transportar dados, enquanto regras de negócio e cálculo de preços pertencem ao domínio, facilitando reutilização e testes.
+- **Suporte a Validações no Payload:**
+  - Anotação `@PositiveOrZero` no campo `compra` em `CarroInput` e `@NotBlank` em `modelo`.
+  - *Motivação:* Fail-fast. Rejeitar requisições inválidas na camada de entrada antes de atingir o banco ou disparar regras de negócio.
+- **Documentação Interativa com SpringDoc (OpenAPI 3 / Swagger):**
+  - Adicionada dependência `springdoc-openapi-starter-webmvc-ui` (v2.6.0) em `/swagger-ui/index.html`.
+  - *Motivação:* O antigo Springfox foi descontinuado e é incompatível com o Spring Boot 3; o SpringDoc é o padrão oficial de mercado para OpenAPI 3.
+- **Documentação de Engenharia e Roadmap:**
+  - Criação de `ROADMAP.md`, `CHANGELOG.md` e guias aprofundados na pasta `docs/` (`GUIA_CONCEITOS_E_ARQUITETURA.md` e `ENTENDENDO_O_REST_ASSURED.md`).
+  - *Motivação:* Rastreabilidade de decisões, nivelamento técnico e guia de evolução do produto.
+
+### Modificado
+- **Upgrade de Stack Tecnológico (Spring Boot 3.3.4 & Java 21):**
+  - Migração completa dos pacotes legados `javax.*` para `jakarta.*` (`jakarta.persistence`, `jakarta.validation`).
+  - Atualização do driver MySQL para `com.mysql:mysql-connector-j` e adição do `flyway-mysql`.
+  - Atualização do `ApiExceptionHandler` para o padrão do Spring 6 (`HttpStatusCode`).
+  - Atualização do ModelMapper (`3.2.1`) e Lombok (`1.18.34`) para suporte nativo ao Java 21.
+  - *Motivação:* Descontinuação de suporte (EOL) do ecossistema Java EE / Spring Boot 2.x, blindagem contra vulnerabilidades conhecidas e ganho de performance com o runtime Java 21.
+- **Refatoração dos Testes de Integração (REST-Assured):**
+  - Atualização da classe `CadastroCarroIT` para operar na porta `3307`, com banco isolado `concessionaria_test` e asserções com `BigDecimal`.
+  - Cobertura expandida para 100% dos fluxos CRUD e validação de código de status (`200`, `201`, `204`, `400`, `404`).
+  - *Motivação:* Criar uma rede de segurança automatizada para evitar regressões durante upgrades de framework e migrations de banco de dados.
 
 ### Corrigido
-- **Conflito de Porta MySQL:** Remapeamento da porta host do MySQL no Docker de `3306` para `3307` em `docker-compose.yml`, `application.properties` e `application-test.properties` para evitar conflito com serviço local do Windows.
-- **Suíte de Testes de Integração:** Atualização da base de testes REST-Assured (`CadastroCarroIT`) para utilizar a porta `3307` e objetos `BigDecimal`.
+- **Blindagem na Atualização de Veículos (`PUT`):**
+  - Implementado `copyToDomainObject` no `CarroInputDisassembler` com `setSkipNullEnabled(true)`.
+  - Remoção de `@PreUpdate` indevido e configuração de `updatable = false` no campo `dataCompra`.
+  - *Motivação:* Impedir mutações involuntárias na data original de compra do veículo e evitar sobrescrita com nulo de propriedades não enviadas na requisição.
+- **Conflito de Porta MySQL no Ambiente Docker:**
+  - Remapeamento da porta host do MySQL de `3306` para `3307` em `docker-compose.yml`, `application.properties` e `application-test.properties`.
+  - *Motivação:* Evitar colisão com instâncias locais do MySQL já em execução no Windows na porta padrão `3306`.
+
+### Removido
+- **Springfox Swagger 2:**
+  - Removidas dependências obsoletas `springfox-swagger2` e `springfox-swagger-ui`.
+  - *Motivação:* Incompatibilidade técnica com o Spring Boot 3 e abandono do projeto pela comunidade open-source.
