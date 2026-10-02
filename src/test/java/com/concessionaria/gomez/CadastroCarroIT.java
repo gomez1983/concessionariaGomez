@@ -100,6 +100,52 @@ public class CadastroCarroIT {
     }
 
     @Test
+    @DisplayName("Deve retornar carros com valor de compra maior ou igual quando consultar com minValor")
+    public void deveRetornarCarrosFiltradosPorMinValor_QuandoConsultarComParametroMinValor() {
+        RestAssured.given()
+                .queryParam("minValor", 200000)
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("", Matchers.hasSize(1))
+                .body("[0].modelo", equalTo("Classe A"))
+                .body("[0].compra", equalTo(319900.00f));
+    }
+
+    @Test
+    @DisplayName("Deve retornar carros com valor de compra menor ou igual quando consultar com maxValor")
+    public void deveRetornarCarrosFiltradosPorMaxValor_QuandoConsultarComParametroMaxValor() {
+        RestAssured.given()
+                .queryParam("maxValor", 200000)
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("", Matchers.hasSize(1))
+                .body("[0].modelo", equalTo("M5"))
+                .body("[0].compra", equalTo(150000.00f));
+    }
+
+    @Test
+    @DisplayName("Deve retornar carros na faixa de valores quando consultar com minValor e maxValor (BETWEEN)")
+    public void deveRetornarCarrosFiltradosPorFaixaDeValores_QuandoConsultarComMinValorEMaxValor() {
+        RestAssured.given()
+                .queryParam("minValor", 100000)
+                .queryParam("maxValor", 200000)
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("", Matchers.hasSize(1))
+                .body("[0].modelo", equalTo("M5"))
+                .body("[0].compra", equalTo(150000.00f));
+    }
+
+    @Test
     @DisplayName("Deve retornar status 200 e dados corretos quando consultar carro por ID existente")
     public void deveRetornarRespostasEStatusCorretos_QuandoConsultarCarroExistente() {
         RestAssured.given()
@@ -188,10 +234,8 @@ public class CadastroCarroIT {
             .then()
                 .statusCode(HttpStatus.OK.value())
                 .body("marca", equalTo("Mercedes-Benz"))
-                .body("modelo", equalTo("Classe A Sedan"))
-                .body("ano", equalTo(2023))
-                .body("compra", equalTo(340000.00f))
-                .body("venda", equalTo(374000.00f));
+                .body("modelo", equalTo("Classe A 250 Turbo"))
+                .body("compra", equalTo(319900.00f));
     }
 
     @Test

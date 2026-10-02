@@ -49,6 +49,74 @@
       "response": []
     },
     {
+      "name": "1.2 Filtrar Carros por Valor Mínimo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?minValor=50000",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "minValor",
+              "value": "50000",
+              "description": "Filtro opcional para veículos com valor de compra maior ou igual"
+            }
+          ]
+        },
+        "description": "Filtra os veículos com valor de compra maior ou igual ao minValor."
+      },
+      "response": []
+    },
+    {
+      "name": "1.3 Filtrar Carros por Valor Máximo",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?maxValor=200000",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "maxValor",
+              "value": "200000",
+              "description": "Filtro opcional para veículos com valor de compra menor ou igual"
+            }
+          ]
+        },
+        "description": "Filtra os veículos com valor de compra menor ou igual ao maxValor."
+      },
+      "response": []
+    },
+    {
+      "name": "1.4 Filtrar Carros por Faixa de Valores (BETWEEN)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?minValor=50000&maxValor=200000",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "minValor",
+              "value": "50000",
+              "description": "Valor mínimo da faixa"
+            },
+            {
+              "key": "maxValor",
+              "value": "200000",
+              "description": "Valor máximo da faixa"
+            }
+          ]
+        },
+        "description": "Filtra os veículos cujo valor de compra está entre minValor e maxValor (inclusive)."
+      },
+      "response": []
+    },
+    {
       "name": "2. Buscar Carro por ID",
       "request": {
         "method": "GET",

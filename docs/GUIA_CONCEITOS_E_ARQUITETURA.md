@@ -7,7 +7,7 @@ Este documento foi elaborado para servir como material de consulta permanente e 
 ## 📑 Sumário
 1. [Extração da Regra de Negócio de Venda (Domínio vs. DTO)](#1-extração-da-regra-de-negócio-de-venda-domínio-vs-dto)
 2. [Arquitetura em Camadas: Controller, Model e Assembler](#2-arquitetura-em-camadas-controller-model-e-assembler)
-3. [Roteamento HTTP no Spring: O Mistério do Erro 400 no Filtro de Ano](#3-roteamento-http-no-spring-o-mistério-do-erro-400-no-filtro-de-ano)
+3. [Roteamento HTTP no Spring: O Mistério do Erro 400 e os Filtros de Consulta](#3-roteamento-http-no-spring-o-mistério-do-erro-400-e-os-filtros-de-consulta)
 4. [Testes de Integração com REST-Assured e a Classe CadastroCarroIT](#4-testes-de-integração-com-rest-assured-e-a-classe-cadastrocarroit)
 5. [Precisão Financeira: Por que BigDecimal e não Double?](#5-precisão-financeira-por-que-bigdecimal-e-não-double)
 6. [Modernização de Plataforma: Spring Boot 3, Java 21 e SpringDoc](#6-modernização-de-plataforma-spring-boot-3-java-21-e-springdoc)
@@ -74,15 +74,15 @@ O projeto adota uma arquitetura em camadas bem delimitada. O fluxo de dados segu
 ```mermaid
 graph LR
     subgraph Entrada [Entrada de Dados (POST / PUT)]
-        ClientIn[Cliente HTTP] -->|JSON com CarroInput| ControllerIn[CarroController]
-        ControllerIn -->|CarroInputDisassembler| Entity[Carro - Domínio]
+        ClientIn[Cliente HTTP] -->|JSON com CarroInput| ControllerIn[CarroController]\
+        ControllerIn -->|CarroInputDisassembler| Entity[Carro - Domínio]\
         Entity -->|JPA Repository| DB[(MySQL)]
     end
 
     subgraph Saida [Saída de Dados (GET)]
-        DB -->|Carro| ControllerOut[CarroController]
-        ControllerOut -->|CarroModelAssembler| DTO[CarroModel]
-        DTO -->|JSON Final com Venda Sugerida| ClientOut[Cliente HTTP]
+        DB -->|Carro| ControllerOut[CarroController]\
+        ControllerOut -->|CarroModelAssembler| DTO[CarroModel]\
+        DTO -->|JSON Final com Venda Sugerida| ClientOut[Cliente HTTP]\
     end
 ```
 
@@ -99,9 +99,9 @@ graph LR
 
 ---
 
-## 3. Roteamento HTTP no Spring: O Mistério do Erro 400 no Filtro de Ano
+## 3. Roteamento HTTP no Spring: O Mistério do Erro 400 e os Filtros de Consulta
 
-### 🐛 O que aconteceu?
+### 🐛 O que aconteceu no passado?
 Durante a criação do filtro de busca de carros por ano, foram criados dois métodos no mesmo Controller:
 - `GET /carros` (listava todos os veículos)
 - `GET /carros/ano/{ano}` (deveria buscar carros por ano específico)
@@ -118,28 +118,36 @@ public CarroModel buscar(@PathVariable Long carroId) { ... }
 Quando a requisição `GET /carros/ano/2020` chegava, o Spring MVC avaliava as rotas e interpretava:
 - A palavra literal `"ano"` foi casada com o placeholder `{carroId}`.
 - O Spring tentou converter a String `"ano"` para o tipo `Long`.
-- Houve uma falha de conversão de tipo (`MethodArgumentTypeMismatchException`), gerando automaticamente o status **400 Bad Request** .
+- Houve uma falha de conversão de tipo (`MethodArgumentTypeMismatchException`), gerando automaticamente o status **400 Bad Request**.
+
+O mesmo erro de interpretação ocorre caso alguém tente filtrar adicionando parâmetros após um ID (ex.: `GET /carros/1?minValor=...` busca a ficha individual do carro 1, ignorando filtros da coleção).
 
 ### 🏆 A Solução RESTful Correta
 Em APIs REST bem projetadas, **filtros de consulta pertencem à rota raiz da coleção como Query Parameters (`?param=valor`)**, e não como sub-recursos.
 
-Ajustamos o endpoint raiz para receber o ano como parâmetro opcional:
+Evoluímos o endpoint raiz para receber ano, valor mínimo (`minValor`) e valor máximo (`maxValor`) como parâmetros opcionais combinados:
 
 ```java
 // ✅ SOLUÇÃO ELEGANTE: api/controller/CarroController.java
 @GetMapping
-public List<CarroModel> listar(@RequestParam(required = false) Integer ano) {
-    if (ano != null) {
-        return carroModelAssembler.toCollectionModel(carroRepository.findByAno(ano));
-    }
-    return carroModelAssembler.toCollectionModel(carroRepository.findAll());
+public List<CarroModel> listar(
+        @RequestParam(required = false) Integer ano,
+        @RequestParam(required = false) BigDecimal minValor,
+        @RequestParam(required = false) BigDecimal maxValor) {
+
+    List<Carro> carros = carroRepository.findComFiltros(ano, minValor, maxValor);
+    return carroModelAssembler.toCollectionModel(carros);
 }
 ```
 
-Agora, o cliente usa rotas limpas e sem ambiguidades:
+Agora, o cliente usa rotas limpas, sem ambiguidades e sem colisões:
 - `GET /carros` ➔ Traz todos os carros.
 - `GET /carros?ano=2020` ➔ Filtra apenas os carros fabricados em 2020.
-- `GET /carros/1` ➔ Busca o carro de ID 1 sem nenhuma colisão.
+- `GET /carros?minValor=50000` ➔ Filtra carros com valor de compra ≥ R$ 50.000,00.
+- `GET /carros?maxValor=200000` ➔ Filtra carros com valor de compra ≤ R$ 200.000,00.
+- `GET /carros?minValor=50000&maxValor=200000` ➔ Filtra faixa de valores (BETWEEN).
+- `GET /carros?ano=2022&minValor=100000&maxValor=350000` ➔ Combina filtros de ano e valores.
+- `GET /carros/1` ➔ Busca a ficha individual do carro de ID 1 sem nenhuma colisão.
 
 ---
 

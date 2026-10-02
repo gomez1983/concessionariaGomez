@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -37,11 +38,13 @@ public class CarroController {
     private CarroInputDisassembler carroInputDisassembler;
 
     @GetMapping
-    @Operation(summary = "Método para listar veículos (opcionalmente filtrados por ano)")
-    public List<CarroModel> listar(@RequestParam(required = false) Integer ano) {
-        List<Carro> carros = (ano != null)
-                ? carroRepository.findByAno(ano)
-                : carroRepository.findAll();
+    @Operation(summary = "Método para listar veículos (opcionalmente filtrados por ano e faixa de valores)")
+    public List<CarroModel> listar(
+            @RequestParam(required = false) Integer ano,
+            @RequestParam(required = false) BigDecimal minValor,
+            @RequestParam(required = false) BigDecimal maxValor) {
+
+        List<Carro> carros = carroRepository.findComFiltros(ano, minValor, maxValor);
 
         return carroModelAssembler.toCollectionModel(carros);
     }

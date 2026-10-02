@@ -72,12 +72,20 @@ graph TD
 ---
 
 ### 🔹 Fase 3: Recursos Avançados de API RESTful
+- [x] **Filtros por Ano e Faixa de Valores (`minValor`, `maxValor` e BETWEEN):**
+  - **O que foi feito:** Evolução do endpoint de listagem `GET /carros` para suportar consultas com filtros opcionais combinados de `ano`, `minValor` e `maxValor`.
+  - **Como funciona:**
+    - Criada a consulta JPQL flexível e parametrizada `findComFiltros` no `CarroRepository` usando cláusulas condicionais nulas (`(:minValor is null or c.compra >= :minValor)`).
+    - Permite busca por valor mínimo (`?minValor=50000`), valor máximo (`?maxValor=200000`) e intervalo fechado BETWEEN (`?minValor=50000&maxValor=200000`), mantendo a possibilidade de combinar com `?ano=2022`.
+    - 100% segura contra SQL Injection (parâmetros nomeados gerenciados nativamente pelo Hibernate).
+  - **Validação e Testes:**
+    - Adicionados 3 novos testes de integração automatizados com REST-Assured em `CadastroCarroIT.java`.
+    - Coleção Postman (`concessionaria-postman-collection.json`) atualizada com as requisições `1.2`, `1.3` e `1.4`.
 - [ ] **Paginação e Ordenação:**
   - Implementar suporte a `Pageable` no endpoint `GET /carros` (`?page=0&size=10&sort=compra,desc`).
   - Prevenir sobrecarga de memória caso a base cresça para milhares de veículos.
-- [ ] **Filtros Dinâmicos (Search API via Spring Data JPA Specification):**
-  - Permitir buscas complexas e combinadas na URL:
-    - `GET /carros?marca=Ford&anoMin=2018&precoMax=100000&ativo=true`
+- [ ] **Filtros Dinâmicos Avançados com Specification (marca, modelo, ativo):**
+  - Permitir buscas com texto parcial e múltiplos predicados na URL.
 - [ ] **Maturidade REST com HATEOAS (Richardson Nível 3):**
   - Adicionar links hipermídia nas respostas dos carros (ex.: links para self, ativação, inativação e fotos).
 

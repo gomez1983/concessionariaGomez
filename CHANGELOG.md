@@ -10,6 +10,12 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 ## [0.1.1-BETA] - 2026-10-02
 
 ### Adicionado
+- **Filtros por Faixa de Valores na Consulta de Veículos (`minValor`, `maxValor` e BETWEEN):**
+  - Implementado suporte aos parâmetros de consulta `minValor` e `maxValor` no endpoint `GET /carros`.
+  - Criada consulta JPQL flexível `findComFiltros` no `CarroRepository` com parametrização segura (`:minValor`, `:maxValor`, `:ano`), permitindo buscas por valor mínimo (`compra >= minValor`), valor máximo (`compra <= maxValor`), intervalo fechado (`BETWEEN`) e combinação opcional com o ano de fabricação.
+  - Cobertura de testes de integração com REST-Assured em `CadastroCarroIT` expandida com 3 novos cenários validando valor mínimo, máximo e faixa entre valores.
+  - Atualizada a coleção do Postman (`concessionaria-postman-collection.json`) com as requisições `1.2`, `1.3` e `1.4`.
+  - *Motivação:* Permitir refinamento e busca por faixa de orçamento de veículos diretamente na rota de listagem REST, atendendo aos requisitos da Fase 3 do Roadmap.
 - **Skill de Auditoria de Segurança Automatizada (`security-audit`):**
   - Implementação da skill adaptada em `.agents/skills/security-audit/` para análise de segurança de APIs Spring Boot e frontends React.
   - Criação de pasta padronizada para relatórios históricos em `docs/security/audits/` e documentação de apoio em `GUIA_SECURITY_AUDIT.md`.
