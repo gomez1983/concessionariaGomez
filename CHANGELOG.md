@@ -7,6 +7,24 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [0.1.1-BETA] - 2026-10-02
+
+### Adicionado
+- **Skill de Auditoria de Segurança Automatizada (`security-audit`):**
+  - Implementação da skill adaptada em `.agents/skills/security-audit/` para análise de segurança de APIs Spring Boot e frontends React.
+  - Criação de pasta padronizada para relatórios históricos em `docs/security/audits/` e documentação de apoio em `GUIA_SECURITY_AUDIT.md`.
+- **Validação Temporal de Entrada (`@PastOrPresent`):**
+  - Adicionada anotação `@PastOrPresent` no atributo `dataCompra` de `CarroInput`.
+  - Implementada suíte de testes unitários `CarroInputTest` cobrindo rejeição de datas futuras e aceitação de datas passadas/nulas.
+  - *Motivação:* Prevenir a inserção de datas de compra artificiais no futuro durante requisições de cadastro (`POST`).
+
+### Modificado
+- **Externalização Segura de Configurações de Banco de Dados:**
+  - Configurações `spring.datasource.url`, `spring.datasource.username` e `spring.datasource.password` em `application.properties` alteradas para utilizar variáveis de ambiente (`${DB_URL}`, `${DB_USERNAME}`, `${DB_PASSWORD}`) mantendo os valores de desenvolvimento local como fallback seguro.
+  - *Motivação:* Permitir injeção dinâmica de credenciais em ambientes de homologação, CI/CD e produção sem expor senhas locais hardcoded.
+
+---
+
 ## [0.1.0-BETA] - 2026-09-14
 
 ### Adicionado
@@ -38,18 +56,3 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 - **Refatoração dos Testes de Integração (REST-Assured):**
   - Atualização da classe `CadastroCarroIT` para operar na porta `3307`, com banco isolado `concessionaria_test` e asserções com `BigDecimal`.
   - Cobertura expandida para 100% dos fluxos CRUD e validação de código de status (`200`, `201`, `204`, `400`, `404`).
-  - *Motivação:* Criar uma rede de segurança automatizada para evitar regressões durante upgrades de framework e migrations de banco de dados.
-
-### Corrigido
-- **Blindagem na Atualização de Veículos (`PUT`):**
-  - Implementado `copyToDomainObject` no `CarroInputDisassembler` com `setSkipNullEnabled(true)`.
-  - Remoção de `@PreUpdate` indevido e configuração de `updatable = false` no campo `dataCompra`.
-  - *Motivação:* Impedir mutações involuntárias na data original de compra do veículo e evitar sobrescrita com nulo de propriedades não enviadas na requisição.
-- **Conflito de Porta MySQL no Ambiente Docker:**
-  - Remapeamento da porta host do MySQL de `3306` para `3307` em `docker-compose.yml`, `application.properties` e `application-test.properties`.
-  - *Motivação:* Evitar colisão com instâncias locais do MySQL já em execução no Windows na porta padrão `3306`.
-
-### Removido
-- **Springfox Swagger 2:**
-  - Removidas dependências obsoletas `springfox-swagger2` e `springfox-swagger-ui`.
-  - *Motivação:* Incompatibilidade técnica com o Spring Boot 3 e abandono do projeto pela comunidade open-source.

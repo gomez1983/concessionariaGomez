@@ -11,6 +11,7 @@ Documento criado em **13/09/2026** consolidando o diagnóstico atual da aplicaç
 - [x] **Documentação da API:** OpenAPI 3 / Swagger UI moderno via SpringDoc em `/swagger-ui/index.html`.
 - [x] **Banco & Migrations:** Flyway gerenciando scripts com carga de testes automática (`afterMigrate.sql`).
 - [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo e suite REST-Assured.
+- [x] **Auditoria de Segurança:** Skill automatizada integrada (`.agents/skills/security-audit/`).
 
 ---
 
@@ -64,6 +65,9 @@ graph TD
   - `lombok` atualizado para `1.18.34`.
   - Correção na atualização de veículos (`PUT`): implementado `copyToDomainObject` no `CarroInputDisassembler` com `setSkipNullEnabled(true)`, removido `@PreUpdate` indevido e blindado `dataCompra` contra mutações acidentais.
   - Teste unitário `CarroInputDisassemblerTest` implementado para garantir integridade das mesclagens.
+- [x] **Skill de Auditoria de Segurança Automatizada (`security-audit`):**
+  - Implementada em [`.agents/skills/security-audit/`](file:///C:/Projetos/concessionaria/.agents/skills/security-audit/README.md) adaptando as melhores práticas do framework Dev Fraga para Spring Boot 3, Java 21, JPA e Frontend React (Fase 5).
+  - Inclui checklists de Spring Data JPA, Mass Assignment em DTOs, rastreamento de segredos, filtros anti-falso-positivo e geração de relatórios com patches sugeridos.
 
 ---
 
