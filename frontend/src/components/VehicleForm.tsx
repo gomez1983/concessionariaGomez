@@ -4,6 +4,10 @@ import { CarFront, ArrowRight } from 'lucide-react';
 import type { Carro, CarroInput } from '../types';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
+import { FormError } from './Feedback';
+import { ValidatedInput } from './ui/validated-input';
+import { MoneyInput } from './ui/money-input';
+import { parseMoney } from '../lib/inputMasks';
 
 export function VehicleForm({
   vehicle,
@@ -14,17 +18,18 @@ export function VehicleForm({
   vehicle: Carro | null;
   open: boolean;
   onClose: () => void;
-  onSave: (input: CarroInput, id?: number) => void;
+  onSave: (input: CarroInput, id?: number) => Promise<void>;
 }) {
-  const [error, setError] = useState('');
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const [error, setError] = useState<unknown>(null);
+  const [busy, setBusy] = useState(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const input: CarroInput = {
       marca: String(data.get('marca')).trim(),
       modelo: String(data.get('modelo')).trim(),
       ano: Number(data.get('ano')),
-      compra: Number(String(data.get('compra')).replace(',', '.')),
+      compra: parseMoney(String(data.get('compra'))),
       quilometragem: Number(data.get('quilometragem')),
     };
     if (!input.marca || !input.modelo) {
@@ -39,12 +44,7 @@ export function VehicleForm({
       setError('Informe um ano válido, até o próximo ano.');
       return;
     }
-    if (
-      !Number.isFinite(input.compra) ||
-      input.compra < 0 ||
-      input.compra > 99999999.99 ||
-      !/^\d+(?:[.,]\d{1,2})?$/.test(String(data.get('compra')))
-    ) {
+    if (!Number.isFinite(input.compra) || input.compra < 0 || input.compra > 99999999.99) {
       setError('Informe um valor de compra válido, com até duas casas decimais.');
       return;
     }
@@ -56,13 +56,21 @@ export function VehicleForm({
       setError('Informe uma quilometragem inteira entre 0 e 2.147.483.647.');
       return;
     }
-    onSave(input, vehicle?.id);
+    setBusy(true);
+    setError(null);
+    try {
+      await onSave(input, vehicle?.id);
+    } catch (error) {
+      setError(error);
+    } finally {
+      setBusy(false);
+    }
   }
   return (
     <Dialog
       open={open}
       onOpenChange={(value) => {
-        if (!value) onClose();
+        if (!value && !busy) onClose();
       }}
     >
       <DialogContent>
@@ -76,85 +84,82 @@ export function VehicleForm({
         <DialogDescription className="muted">
           {vehicle
             ? 'Atualize os dados do veículo selecionado.'
-            : 'Preencha os dados para adicionar ao estoque de demonstração.'}
+            : 'Preencha os dados para adicionar ao estoque.'}
         </DialogDescription>
         <form onSubmit={submit} className="vehicle-form">
-          <div className="form-grid">
-            <label>
-              Marca
-              <input
-                name="marca"
-                placeholder="Ex.: Volkswagen"
-                defaultValue={vehicle?.marca}
-                maxLength={60}
-                required
-                autoComplete="off"
-              />
-            </label>
-            <label>
-              Modelo
-              <input
-                name="modelo"
-                placeholder="Ex.: Polo"
-                defaultValue={vehicle?.modelo}
-                maxLength={60}
-                required
-                autoComplete="off"
-              />
-            </label>
-            <label>
-              Ano
-              <input
-                name="ano"
-                type="number"
-                placeholder="2024"
-                min={1886}
-                max={new Date().getFullYear() + 1}
-                defaultValue={vehicle?.ano}
-                required
-              />
-            </label>
-            <label>
-              Quilometragem (km)
-              <input
-                name="quilometragem"
-                type="number"
-                placeholder="0"
-                min="0"
-                max="2147483647"
-                step="1"
-                defaultValue={vehicle?.quilometragem}
-                required
-              />
-            </label>
-            <label className="span-two">
-              Valor de compra (R$)
-              <input
-                name="compra"
-                inputMode="decimal"
-                placeholder="Ex.: 85000,00"
-                defaultValue={vehicle?.compra.toFixed(2).replace('.', ',')}
-                required
-              />
-            </label>
-          </div>
-          <p className="field-hint">
-            Use 0 km para um veículo novo. Novos cadastros começam ativos.
-          </p>
-          {error && (
-            <p className="form-error" role="alert">
-              {error}
+          <fieldset disabled={busy} className="form-fieldset">
+            <div className="form-grid">
+              <label>
+                Marca
+                <ValidatedInput
+                  name="marca"
+                  placeholder="Ex.: Volkswagen"
+                  defaultValue={vehicle?.marca}
+                  maxLength={60}
+                  required
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                Modelo
+                <ValidatedInput
+                  name="modelo"
+                  placeholder="Ex.: Polo"
+                  defaultValue={vehicle?.modelo}
+                  maxLength={60}
+                  required
+                  autoComplete="off"
+                />
+              </label>
+              <label>
+                Ano
+                <ValidatedInput
+                  name="ano"
+                  type="number"
+                  placeholder="2024"
+                  min={1886}
+                  max={new Date().getFullYear() + 1}
+                  defaultValue={vehicle?.ano}
+                  required
+                />
+              </label>
+              <label>
+                Quilometragem (km)
+                <ValidatedInput
+                  name="quilometragem"
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  max="2147483647"
+                  step="1"
+                  defaultValue={vehicle?.quilometragem}
+                  required
+                />
+              </label>
+              <label className="span-two">
+                Valor de compra (R$)
+                <MoneyInput
+                  name="compra"
+                  placeholder="R$ 0,00"
+                  defaultValue={vehicle?.compra}
+                  required
+                />
+              </label>
+            </div>
+            <p className="field-hint">
+              Use 0 km para um veículo novo. Novos cadastros começam ativos.
             </p>
-          )}
-          <div className="form-footer">
-            <Button variant="outline" onClick={onClose}>
-              Cancelar
-            </Button>
-            <Button type="submit">
-              {vehicle ? 'Salvar alterações' : 'Adicionar veículo'}
-              <ArrowRight size={17} />
-            </Button>
-          </div>
+            <FormError error={typeof error === 'string' ? new Error(error) : error} />
+            <div className="form-footer">
+              <Button variant="outline" onClick={onClose}>
+                Cancelar
+              </Button>
+              <Button type="submit">
+                {busy ? 'Salvando…' : vehicle ? 'Salvar alterações' : 'Adicionar veículo'}
+                <ArrowRight size={17} />
+              </Button>
+            </div>
+          </fieldset>
         </form>
       </DialogContent>
     </Dialog>

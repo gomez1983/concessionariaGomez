@@ -28,7 +28,7 @@ class CatalogoFotoCarroServiceTest {
     private FotoCarroRepository fotoCarroRepository;
 
     @Mock
-    private FotoStorageService fotoStorageService;
+    private ArquivoFotoTransacionalService arquivos;
 
     @InjectMocks
     private CatalogoFotoCarroService catalogoFotoCarroService;
@@ -46,7 +46,7 @@ class CatalogoFotoCarroServiceTest {
         foto.setTamanho(1024L);
 
         when(fotoCarroRepository.findById(1L)).thenReturn(Optional.empty());
-        when(fotoStorageService.gerarNomeArquivo("ferrari.jpg")).thenReturn("uuid_ferrari.jpg");
+        when(arquivos.armazenar(eq("image/jpeg"), any(InputStream.class))).thenReturn("uuid_ferrari.jpg");
         when(fotoCarroRepository.save(any(FotoCarro.class))).thenAnswer(inv -> inv.getArgument(0));
 
         InputStream stream = new ByteArrayInputStream(new byte[]{1, 2, 3});
@@ -55,7 +55,7 @@ class CatalogoFotoCarroServiceTest {
         assertThat(fotoSalva).isNotNull();
         assertThat(fotoSalva.getNomeArquivo()).isEqualTo("uuid_ferrari.jpg");
         verify(fotoCarroRepository).save(foto);
-        verify(fotoStorageService).substituir(eq(null), any(FotoStorageService.NovaFoto.class));
+        verify(arquivos, never()).removerAposCommit(any());
     }
 
     @Test
@@ -75,15 +75,15 @@ class CatalogoFotoCarroServiceTest {
         novaFoto.setTamanho(2048L);
 
         when(fotoCarroRepository.findById(1L)).thenReturn(Optional.of(fotoExistente));
-        when(fotoStorageService.gerarNomeArquivo("nova.jpg")).thenReturn("uuid_nova.jpg");
+        when(arquivos.armazenar(eq("image/jpeg"), any(InputStream.class))).thenReturn("uuid_nova.jpg");
         when(fotoCarroRepository.save(any(FotoCarro.class))).thenAnswer(inv -> inv.getArgument(0));
 
         InputStream stream = new ByteArrayInputStream(new byte[]{4, 5, 6});
         FotoCarro fotoSalva = catalogoFotoCarroService.salvar(novaFoto, stream);
 
         assertThat(fotoSalva.getNomeArquivo()).isEqualTo("uuid_nova.jpg");
-        verify(fotoCarroRepository).delete(fotoExistente);
-        verify(fotoStorageService).substituir(eq("antiga.jpg"), any(FotoStorageService.NovaFoto.class));
+        verify(fotoCarroRepository, never()).delete(any());
+        verify(arquivos).removerAposCommit("antiga.jpg");
     }
 
     @Test
@@ -108,6 +108,6 @@ class CatalogoFotoCarroServiceTest {
         catalogoFotoCarroService.excluir(5L);
 
         verify(fotoCarroRepository).delete(foto);
-        verify(fotoStorageService).remover("excluir.jpg");
+        verify(arquivos).removerAposCommit("excluir.jpg");
     }
 }

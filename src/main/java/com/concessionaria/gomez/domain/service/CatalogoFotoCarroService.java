@@ -17,32 +17,30 @@ public class CatalogoFotoCarroService {
     private FotoCarroRepository fotoCarroRepository;
 
     @Autowired
-    private FotoStorageService fotoStorageService;
+    private ArquivoFotoTransacionalService arquivos;
 
     @Transactional
     public FotoCarro salvar(FotoCarro foto, InputStream dadosArquivo) {
         Long carroId = foto.getCarroId();
-        String nomeNovoArquivo = fotoStorageService.gerarNomeArquivo(foto.getNomeArquivo());
+        String nomeNovoArquivo = arquivos.armazenar(foto.getContentType(), dadosArquivo);
         String nomeArquivoExistente = null;
 
         Optional<FotoCarro> fotoExistente = fotoCarroRepository.findById(carroId);
 
         if (fotoExistente.isPresent()) {
             nomeArquivoExistente = fotoExistente.get().getNomeArquivo();
-            fotoCarroRepository.delete(fotoExistente.get());
+            FotoCarro existente = fotoExistente.get();
+            existente.setDescricao(foto.getDescricao());
+            existente.setContentType(foto.getContentType());
+            existente.setTamanho(foto.getTamanho());
+            foto = existente;
         }
 
         foto.setNomeArquivo(nomeNovoArquivo);
         foto = fotoCarroRepository.save(foto);
         fotoCarroRepository.flush();
 
-        FotoStorageService.NovaFoto novaFoto = FotoStorageService.NovaFoto.builder()
-                .nomeArquivo(foto.getNomeArquivo())
-                .contentType(foto.getContentType())
-                .inputStream(dadosArquivo)
-                .build();
-
-        fotoStorageService.substituir(nomeArquivoExistente, novaFoto);
+        if (nomeArquivoExistente != null) arquivos.removerAposCommit(nomeArquivoExistente);
 
         return foto;
     }
@@ -59,6 +57,6 @@ public class CatalogoFotoCarroService {
         fotoCarroRepository.delete(foto);
         fotoCarroRepository.flush();
 
-        fotoStorageService.remover(foto.getNomeArquivo());
+        arquivos.removerAposCommit(foto.getNomeArquivo());
     }
 }

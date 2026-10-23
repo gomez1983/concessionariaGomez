@@ -2,6 +2,7 @@ package com.concessionaria.gomez.api.assembler;
 
 import com.concessionaria.gomez.api.controller.CarroController;
 import com.concessionaria.gomez.api.controller.CarroFotoController;
+import com.concessionaria.gomez.api.controller.CarroGaleriaController;
 import com.concessionaria.gomez.api.model.CarroModel;
 import com.concessionaria.gomez.domain.model.Carro;
 import org.modelmapper.ModelMapper;
@@ -34,6 +35,7 @@ public class CarroModelAssembler {
             carroModel.add(linkTo(methodOn(CarroController.class).buscar(carro.getId())).withSelfRel());
             // HATEOAS: Link para foto do veículo -> GET /carros/{id}/foto
             carroModel.add(linkTo(methodOn(CarroFotoController.class).buscar(carro.getId())).withRel("foto"));
+            carroModel.add(linkTo(CarroGaleriaController.class, carro.getId()).withRel("galeria"));
         }
 
         // HATEOAS: Link para a coleção geral de carros -> GET /carros

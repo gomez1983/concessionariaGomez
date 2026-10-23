@@ -33,6 +33,7 @@ public class CadastroCarroService {
     }
     @Transactional
     public void excluir(Long carroId) {
+        buscarOuFalhar(carroId);
         try {
             carroRepository.deleteById(carroId);
             carroRepository.flush();

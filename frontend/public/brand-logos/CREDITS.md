@@ -1,0 +1,1 @@
+Logotipos obtidos de Simple Icons 13.21.0 (https://github.com/simple-icons/simple-icons), distribuídos sob CC0 1.0. As marcas pertencem aos respectivos titulares. SVGs originais; as cores são aplicadas apenas na apresentação por CSS.

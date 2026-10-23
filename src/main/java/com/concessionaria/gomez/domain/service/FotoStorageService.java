@@ -22,7 +22,8 @@ public interface FotoStorageService {
     }
 
     default String gerarNomeArquivo(String nomeOriginal) {
-        return UUID.randomUUID() + "_" + nomeOriginal;
+        String extensao = nomeOriginal != null && nomeOriginal.toLowerCase().endsWith(".png") ? ".png" : ".jpg";
+        return UUID.randomUUID() + extensao;
     }
 
     @Getter

@@ -1,155 +1,103 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  ArrowDownLeft,
   ArrowUpRight,
   Banknote,
+  Camera,
   CarFront,
   ChartNoAxesCombined,
   Check,
-  ChevronDown,
-  ChevronLeft,
   ChevronRight,
   CircleHelp,
   Gauge,
   LayoutDashboard,
-  LayoutGrid,
-  List,
   Menu,
-  Pencil,
   Plus,
-  Power,
-  RotateCcw,
-  Search,
+  RefreshCw,
   ShieldCheck,
-  SlidersHorizontal,
   Sparkles,
   Tag,
-  Trash2,
   Users,
   Wallet,
   X,
+  Sun,
+  Moon,
+  Search,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { seed } from './data/seed';
-import type { Carro, CarroInput, Filters, Sort } from './types';
-import { currency, emptyFilters, filterCarros, number, parseStoredCarros } from './lib/estoque';
+import { api } from './lib/api';
+import { currency } from './lib/estoque';
+import { useResource } from './lib/useResource';
 import { Button } from './components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './components/ui/dialog';
-import { CarIllustration } from './components/CarIllustration';
-import { VehicleForm } from './components/VehicleForm';
+import { ErrorState, Loading } from './components/Feedback';
+import { Stock } from './components/Stock';
+import { Customers } from './components/Customers';
+import { Sales } from './components/Sales';
+import { useTheme } from './lib/useTheme';
 
-const STORAGE_KEY = 'gomez:estoque-demo:v1';
-const PAGE_SIZE = 6;
-type Confirm = { type: 'delete'; vehicle: Carro } | { type: 'reset' } | null;
-
+type Section = 'estoque' | 'overview' | 'clientes' | 'vendas';
+const sections: Record<
+  Section,
+  { label: string; title: string; description: string; action: string; icon: LucideIcon }
+> = {
+  overview: {
+    label: 'Visão geral',
+    title: 'Uma boa visão do seu negócio.',
+    description: 'Os principais números do estoque, em um só lugar.',
+    action: 'Adicionar veículo',
+    icon: LayoutDashboard,
+  },
+  estoque: {
+    label: 'Estoque',
+    title: 'Seu estoque, sob controle.',
+    description: 'Cada veículo, uma nova oportunidade. Gerencie tudo por aqui.',
+    action: 'Adicionar veículo',
+    icon: CarFront,
+  },
+  clientes: {
+    label: 'Clientes',
+    title: 'Bons negócios começam com pessoas.',
+    description: 'Contatos, cadastros e relacionamentos da sua concessionária.',
+    action: 'Adicionar cliente',
+    icon: Users,
+  },
+  vendas: {
+    label: 'Vendas',
+    title: 'Cada venda, uma nova conquista.',
+    description: 'Registre negócios e acompanhe as vendas realizadas.',
+    action: 'Registrar venda',
+    icon: Banknote,
+  },
+};
 export default function App() {
-  const [carros, setCarros] = useState<Carro[]>(() => {
-    try {
-      return parseStoredCarros(localStorage.getItem(STORAGE_KEY)) ?? seed;
-    } catch {
-      return seed;
-    }
-  });
-  const [storageError, setStorageError] = useState(false);
-  const [section, setSection] = useState<'estoque' | 'overview'>('estoque');
-  const [filters, setFilters] = useState<Filters>(emptyFilters);
-  const [sort, setSort] = useState<Sort>('recentes');
-  const [page, setPage] = useState(1);
-  const [view, setView] = useState<'list' | 'grid'>('list');
-  const [advanced, setAdvanced] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
-  const [editing, setEditing] = useState<Carro | null>(null);
-  const [confirm, setConfirm] = useState<Confirm>(null);
-  const [infoOpen, setInfoOpen] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const [search, setSearch] = useState('');
+  const [section, setSection] = useState<Section>('estoque');
+  const [revision, setRevision] = useState(0);
+  const [formRequested, setFormRequested] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [toast, setToast] = useState('');
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(carros));
-      setStorageError(false);
-    } catch {
-      setStorageError(true);
-    }
-  }, [carros]);
-  useEffect(() => {
-    if (!toast) return;
-    const timeout = window.setTimeout(() => setToast(''), 4500);
-    return () => window.clearTimeout(timeout);
-  }, [toast]);
-  useEffect(() => {
-    document.title = `${section === 'estoque' ? 'Estoque' : 'Visão geral'} · Gomez`;
-  }, [section]);
-
-  const results = useMemo(() => filterCarros(carros, filters, sort), [carros, filters, sort]);
-  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const visible = results.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  const active = carros.filter((c) => c.ativo);
-  const invested = active.reduce((sum, c) => sum + c.compra, 0);
-  const brands = [...new Set(carros.map((c) => c.marca))].sort();
-  const activeFilterCount = Object.values(filters).filter(Boolean).length;
-  const invalidRange =
-    (filters.minValor !== '' &&
-      filters.maxValor !== '' &&
-      Number(filters.minValor) > Number(filters.maxValor)) ||
-    (filters.minKm !== '' && filters.maxKm !== '' && Number(filters.minKm) > Number(filters.maxKm));
-
-  function changeFilter(key: keyof Filters, value: string) {
-    setFilters((previous) => ({ ...previous, [key]: value }));
-    setPage(1);
+  const dashboard = useResource(api.dashboard, [revision]);
+  const summary = dashboard.data;
+  const config = sections[section];
+  function changed(message?: string) {
+    setRevision((value) => value + 1);
+    if (message) setToast(message);
   }
-  function clearFilters() {
-    setFilters(emptyFilters);
-    setPage(1);
-  }
-  function newVehicle() {
-    setEditing(null);
-    setFormOpen(true);
-  }
-  function editVehicle(vehicle: Carro) {
-    setEditing(vehicle);
-    setFormOpen(true);
-  }
-  function saveVehicle(input: CarroInput, id?: number) {
-    setCarros((previous) =>
-      id !== undefined
-        ? previous.map((c) => (c.id === id ? { ...c, ...input } : c))
-        : [
-            {
-              ...input,
-              id: Math.max(0, ...previous.map((c) => c.id)) + 1,
-              ativo: true,
-              dataCompra: new Date().toISOString(),
-            },
-            ...previous,
-          ],
-    );
-    setFormOpen(false);
-    setToast(id !== undefined ? 'Dados do veículo atualizados.' : 'Veículo adicionado ao estoque.');
-  }
-  function toggleVehicle(vehicle: Carro) {
-    setCarros((previous) =>
-      previous.map((c) => (c.id === vehicle.id ? { ...c, ativo: !c.ativo } : c)),
-    );
-    setToast(`${vehicle.marca} ${vehicle.modelo} ${vehicle.ativo ? 'inativado' : 'ativado'}.`);
-  }
-  function confirmAction() {
-    if (confirm?.type === 'delete') {
-      setCarros((previous) => previous.filter((c) => c.id !== confirm.vehicle.id));
-      setToast('Veículo excluído da demonstração.');
-    } else if (confirm?.type === 'reset') {
-      setCarros(seed);
-      clearFilters();
-      setToast('Dados de demonstração restaurados.');
-    }
-    setConfirm(null);
-  }
-  function navigate(next: typeof section) {
+  function navigate(next: Section) {
     setSection(next);
+    setFormRequested(false);
     setMobileNav(false);
   }
-
+  useEffect(() => {
+    document.title = `${config.label} · Gomez`;
+  }, [config.label]);
+  useEffect(() => {
+    if (!toast) return;
+    const timeout = window.setTimeout(() => setToast(''), 5000);
+    return () => clearTimeout(timeout);
+  }, [toast]);
   return (
     <div className="app-shell">
       {mobileNav && (
@@ -163,14 +111,14 @@ export default function App() {
         <a
           href="#estoque"
           className="brand"
+          aria-label="Gomez, ir para estoque"
           onClick={(event) => {
             event.preventDefault();
             navigate('estoque');
           }}
-          aria-label="Gomez, ir para estoque"
         >
           <span className="brand-mark">
-            g<span>.</span>
+            <CarFront size={27} />
           </span>
           <span>
             gomez<span className="brand-subtitle">GESTÃO AUTOMOTIVA</span>
@@ -187,65 +135,79 @@ export default function App() {
         </div>
         <span className="nav-caption">PRINCIPAL</span>
         <nav aria-label="Navegação principal">
-          <button
-            className={`nav-item ${section === 'overview' ? 'selected' : ''}`}
-            onClick={() => navigate('overview')}
-          >
-            <LayoutDashboard size={19} />
-            Visão geral
-          </button>
-          <button
-            className={`nav-item ${section === 'estoque' ? 'selected' : ''}`}
-            onClick={() => navigate('estoque')}
-          >
-            <CarFront size={20} />
-            Estoque<span className="nav-count">{carros.length}</span>
-          </button>
-          <div className="nav-item planned" aria-disabled="true">
-            <Users size={19} />
-            Clientes<span className="soon">Em breve</span>
-          </div>
-          <div className="nav-item planned" aria-disabled="true">
-            <Banknote size={19} />
-            Vendas<span className="soon">Em breve</span>
-          </div>
+          {(Object.keys(sections) as Section[]).map((key) => {
+            const Icon = sections[key].icon;
+            return (
+              <button
+                key={key}
+                className={`nav-item ${section === key ? 'selected' : ''}`}
+                aria-current={section === key ? 'page' : undefined}
+                aria-label={sections[key].label}
+                title={sections[key].label}
+                onClick={() => navigate(key)}
+              >
+                <Icon size={19} />
+                <span className="nav-label">{sections[key].label}</span>
+                {key === 'estoque' && summary && (
+                  <span className="nav-count">{summary.totalVeiculos}</span>
+                )}
+              </button>
+            );
+          })}
         </nav>
         <div className="sidebar-bottom">
           <div className="demo-card">
-            <Sparkles size={20} />
+            <Camera size={22} />
             <strong>
-              Do primeiro contato
-              <br />à próxima conquista.
+              Cada ângulo conta
+              <br />
+              uma história.
             </strong>
             <p>
-              Uma nova forma de cuidar
-              <br />
-              do seu estoque.
+              Organize fotos e destaque
+              <br />o melhor de cada veículo.
             </p>
-            <span>PROTÓTIPO INTERATIVO</span>
+            <span>CATÁLOGO CONECTADO</span>
           </div>
-          <button className="nav-item help" onClick={() => setInfoOpen(true)}>
+          <button
+            className="nav-item help"
+            aria-label="Sobre o painel"
+            title="Sobre o painel"
+            onClick={() => setInfoOpen(true)}
+          >
             <CircleHelp size={18} />
-            Sobre esta demonstração
+            <span className="nav-label">Sobre o painel</span>
             <ArrowUpRight size={15} />
           </button>
           <div className="profile">
             <span className="avatar">CG</span>
             <div>
-              Concessionária Gomez<small>Ambiente de demonstração</small>
+              Concessionária Gomez<small>Painel do funcionário</small>
             </div>
             <span className="online-dot" />
           </div>
         </div>
       </aside>
-
       <div className="main-shell">
         <header className="topbar">
+          <a
+            className="topbar-brand"
+            href="#estoque"
+            onClick={(event) => {
+              event.preventDefault();
+              navigate('estoque');
+            }}
+          >
+            <CarFront size={34} />
+            <span>
+              Concessionária<strong>Gomez</strong>
+            </span>
+          </a>
           <div className="breadcrumbs">
             <Button
+              className="mobile-menu"
               variant="ghost"
               size="icon"
-              className="mobile-menu"
               aria-label="Abrir navegação"
               onClick={() => setMobileNav(true)}
             >
@@ -253,17 +215,57 @@ export default function App() {
             </Button>
             <span>Workspace</span>
             <ChevronRight size={13} />
-            <strong>{section === 'estoque' ? 'Estoque' : 'Visão geral'}</strong>
+            <strong>{config.label}</strong>
+          </div>
+          <div className="global-search">
+            <Search size={19} />
+            <input
+              aria-label="Buscar veículo por modelo"
+              value={search}
+              placeholder="Buscar um veículo..."
+              onChange={(event) => {
+                if (section !== 'estoque') navigate('estoque');
+                setSearch(event.target.value);
+              }}
+            />
+            {search && (
+              <button aria-label="Limpar busca" onClick={() => setSearch('')}>
+                <X size={15} />
+              </button>
+            )}
           </div>
           <div className="topbar-right">
-            <span className="demo-pill">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="theme-toggle"
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+              aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </Button>
+            <span className={`connection-pill ${dashboard.error ? 'offline' : ''}`}>
               <span />
-              Dados de demonstração
+              {dashboard.loading
+                ? 'Atualizando…'
+                : dashboard.error
+                  ? 'API indisponível'
+                  : 'Conectado à API'}
             </span>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Atualizar dados"
+              title="Atualizar dados"
+              onClick={() => changed()}
+            >
+              <RefreshCw size={16} />
+            </Button>
             <button
               className="top-avatar"
               onClick={() => setInfoOpen(true)}
-              aria-label="Informações do ambiente"
+              aria-label="Sobre o painel"
             >
               CG
             </button>
@@ -273,508 +275,178 @@ export default function App() {
           <div className="page-heading">
             <div>
               <span className="eyebrow">CONCESSIONÁRIA GOMEZ</span>
-              <h1>
-                {section === 'estoque'
-                  ? 'Seu estoque, sob controle.'
-                  : 'Uma boa visão do seu negócio.'}
-              </h1>
-              <p>
-                {section === 'estoque'
-                  ? 'Cada veículo, uma nova oportunidade. Gerencie tudo por aqui.'
-                  : 'Os principais números do estoque, em um só lugar.'}
-              </p>
+              <h1>{config.title}</h1>
+              <p>{config.description}</p>
             </div>
-            <Button onClick={newVehicle}>
+            <Button
+              onClick={() => {
+                if (section === 'overview') setSection('estoque');
+                setFormRequested(true);
+              }}
+            >
               <Plus size={18} />
-              Adicionar veículo
+              {config.action}
             </Button>
           </div>
-          {storageError && (
-            <div className="storage-alert" role="alert">
-              O navegador não permitiu salvar os dados. As alterações durarão somente enquanto esta
-              página estiver aberta.
-            </div>
-          )}
-          <section className="stats-grid" aria-label="Indicadores de todo o estoque">
-            <Stat
-              label="Veículos no estoque"
-              value={String(carros.length).padStart(2, '0')}
-              description={`${active.length} ativos · ${carros.length - active.length} inativos`}
-              icon={CarFront}
-            />
-            <Stat
-              label="Investido em ativos"
-              value={currency(invested)}
-              description="Soma dos valores de compra"
-              icon={Wallet}
-            />
-            <Stat
-              label="Venda sugerida dos ativos"
-              value={currency(invested * 1.1)}
-              description="Simulação com acréscimo de 10%"
-              icon={ChartNoAxesCombined}
-              featured
-            />
-            <Stat
-              label="Veículos zero km"
-              value={String(carros.filter((c) => c.quilometragem === 0).length).padStart(2, '0')}
-              description="Prontos para a primeira viagem"
-              icon={Gauge}
-            />
-          </section>
-
-          {section === 'overview' ? (
-            <section className="overview-grid">
-              <div className="panel brand-panel">
-                <div className="panel-heading">
-                  <div>
-                    <h2>O perfil do estoque</h2>
-                    <p>Distribuição de veículos por marca</p>
-                  </div>
-                  <Tag size={20} />
+          {(section === 'estoque' || section === 'overview') && (
+            <>
+              {dashboard.error ? (
+                <div className="dashboard-error">
+                  <ErrorState message={dashboard.error} retry={dashboard.reload} />
                 </div>
-                <div className="brand-bars">
-                  {brands.length ? (
-                    brands.map((marca) => {
-                      const count = carros.filter((c) => c.marca === marca).length;
-                      return (
-                        <div key={marca} className="brand-bar">
+              ) : (
+                <section className="stats-grid" aria-label="Indicadores de todo o estoque">
+                  <Stat
+                    label="Veículos no estoque"
+                    value={summary ? String(summary.totalVeiculos).padStart(2, '0') : '—'}
+                    description={
+                      summary
+                        ? `${summary.ativos} ativos · ${summary.totalVeiculos - summary.ativos} inativos`
+                        : 'Consultando estoque'
+                    }
+                    icon={CarFront}
+                  />
+                  <Stat
+                    label="Investido em ativos"
+                    value={summary ? currency(summary.valorInvestido) : '—'}
+                    description="Soma dos valores de compra"
+                    icon={Wallet}
+                  />
+                  <Stat
+                    label="Venda sugerida dos ativos"
+                    value={summary ? currency(summary.vendaSugerida) : '—'}
+                    description="Estimativa calculada pelo domínio"
+                    icon={ChartNoAxesCombined}
+                    featured
+                  />
+                  <Stat
+                    label="Margem prevista"
+                    value={
+                      summary?.margemPrevista !== undefined ? currency(summary.margemPrevista) : '—'
+                    }
+                    description="Projeção sobre os veículos ativos"
+                    icon={Gauge}
+                  />
+                </section>
+              )}
+            </>
+          )}
+          {section === 'overview' &&
+            (dashboard.loading ? (
+              <Loading />
+            ) : (
+              summary &&
+              !dashboard.error && (
+                <section className="overview-grid">
+                  <div className="panel brand-panel">
+                    <div className="panel-heading">
+                      <div>
+                        <h2>O perfil do estoque</h2>
+                        <p>Distribuição de veículos por marca</p>
+                      </div>
+                      <Tag size={20} />
+                    </div>
+                    <div className="brand-bars">
+                      {Object.entries(summary.marcas).map(([marca, count]) => (
+                        <div className="brand-bar" key={marca}>
                           <div>
                             <strong>{marca}</strong>
                             <span>{count} veículos</span>
                           </div>
                           <div className="bar-track">
                             <span
-                              style={{ width: `${(count / Math.max(1, carros.length)) * 100}%` }}
+                              style={{
+                                width: `${(count / Math.max(1, summary.totalVeiculos)) * 100}%`,
+                              }}
                             />
                           </div>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <p className="muted">Adicione veículos para ver a distribuição.</p>
-                  )}
-                </div>
-              </div>
-              <div className="overview-callout">
-                <span className="callout-icon">
-                  <ArrowUpRight size={30} />
-                </span>
-                <span className="eyebrow">PRÓXIMA PARADA</span>
-                <h2>
-                  Seu próximo negócio
-                  <br />
-                  começa no estoque.
-                </h2>
-                <p>
-                  Consulte os veículos disponíveis, atualize informações e prepare cada
-                  oportunidade.
-                </p>
-                <Button onClick={() => navigate('estoque')}>
-                  Explorar estoque
-                  <ArrowUpRight size={17} />
-                </Button>
-              </div>
-            </section>
-          ) : (
-            <section className="panel stock-panel" aria-labelledby="inventory-title">
-              <div className="panel-heading">
-                <div className="inventory-title">
-                  <h2 id="inventory-title">Veículos</h2>
-                  <span className="count-pill">{results.length}</span>
-                </div>
-                <div className="view-switch" aria-label="Visualização">
-                  <button
-                    aria-label="Visualizar em lista"
-                    aria-pressed={view === 'list'}
-                    onClick={() => setView('list')}
-                  >
-                    <List size={17} />
-                  </button>
-                  <button
-                    aria-label="Visualizar em cards"
-                    aria-pressed={view === 'grid'}
-                    onClick={() => setView('grid')}
-                  >
-                    <LayoutGrid size={16} />
-                  </button>
-                </div>
-              </div>
-              <div className="filter-toolbar">
-                <div className="search-field">
-                  <Search size={18} />
-                  <input
-                    aria-label="Buscar veículos"
-                    placeholder="Buscar por marca, modelo ou ano..."
-                    value={filters.search}
-                    onChange={(event) => changeFilter('search', event.target.value)}
-                  />
-                  {filters.search && (
-                    <button aria-label="Limpar busca" onClick={() => changeFilter('search', '')}>
-                      <X size={15} />
-                    </button>
-                  )}
-                </div>
-                <label className="select-wrap">
-                  <span className="sr-only">Filtrar por marca</span>
-                  <select
-                    value={filters.marca}
-                    onChange={(event) => changeFilter('marca', event.target.value)}
-                  >
-                    <option value="">Todas as marcas</option>
-                    {brands.map((marca) => (
-                      <option key={marca}>{marca}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} />
-                </label>
-                <label className="select-wrap">
-                  <span className="sr-only">Filtrar por status</span>
-                  <select
-                    value={filters.ativo}
-                    onChange={(event) => changeFilter('ativo', event.target.value)}
-                  >
-                    <option value="">Todos os status</option>
-                    <option value="true">Ativos</option>
-                    <option value="false">Inativos</option>
-                  </select>
-                  <ChevronDown size={14} />
-                </label>
-                <Button
-                  variant="outline"
-                  className={advanced ? 'filter-active' : ''}
-                  onClick={() => setAdvanced(!advanced)}
-                  aria-expanded={advanced}
-                  aria-controls="advanced-filters"
-                >
-                  <SlidersHorizontal size={16} />
-                  Filtros
-                  {activeFilterCount > 0 && (
-                    <span className="filter-count">{activeFilterCount}</span>
-                  )}
-                </Button>
-              </div>
-              {advanced && (
-                <div className="advanced-filters" id="advanced-filters">
-                  <label>
-                    Ano
-                    <input
-                      aria-label="Filtrar por ano"
-                      type="number"
-                      min="1886"
-                      max={new Date().getFullYear() + 1}
-                      placeholder="Todos"
-                      value={filters.ano}
-                      onChange={(e) => changeFilter('ano', e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Compra mínima (R$)
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Sem mínimo"
-                      value={filters.minValor}
-                      onChange={(e) => changeFilter('minValor', e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Compra máxima (R$)
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Sem máximo"
-                      value={filters.maxValor}
-                      onChange={(e) => changeFilter('maxValor', e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Km mínimo
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Sem mínimo"
-                      value={filters.minKm}
-                      onChange={(e) => changeFilter('minKm', e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Km máximo
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="Sem máximo"
-                      value={filters.maxKm}
-                      onChange={(e) => changeFilter('maxKm', e.target.value)}
-                    />
-                  </label>
-                  {invalidRange && (
-                    <p className="form-error range-error" role="alert">
-                      O mínimo deve ser menor ou igual ao máximo.
-                    </p>
-                  )}
-                </div>
-              )}
-              <div className="results-toolbar">
-                <span>
-                  {activeFilterCount
-                    ? `${results.length} ${results.length === 1 ? 'veículo encontrado' : 'veículos encontrados'}`
-                    : 'Uma seleção de novas possibilidades'}
-                  {activeFilterCount > 0 && (
-                    <button onClick={clearFilters}>
-                      Limpar filtros
-                      <X size={12} />
-                    </button>
-                  )}
-                </span>
-                <label>
-                  Ordenar por:
-                  <select
-                    aria-label="Ordenar veículos"
-                    value={sort}
-                    onChange={(e) => {
-                      setSort(e.target.value as Sort);
-                      setPage(1);
-                    }}
-                  >
-                    <option value="recentes">Mais recentes</option>
-                    <option value="valor-asc">Menor valor de compra</option>
-                    <option value="valor-desc">Maior valor de compra</option>
-                    <option value="ano-desc">Ano mais novo</option>
-                  </select>
-                </label>
-              </div>
-              {!results.length ? (
-                <div className="empty-state">
-                  <Search size={32} />
-                  <h3>{carros.length ? 'Nenhum veículo por aqui.' : 'Seu estoque começa aqui.'}</h3>
-                  <p>
-                    {carros.length
-                      ? 'Experimente outros termos ou ajuste os filtros.'
-                      : 'Adicione o primeiro veículo à demonstração.'}
-                  </p>
-                  <Button variant="outline" onClick={carros.length ? clearFilters : newVehicle}>
-                    {carros.length ? 'Limpar filtros' : 'Adicionar veículo'}
-                  </Button>
-                </div>
-              ) : view === 'list' ? (
-                <div className="table-scroll">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>VEÍCULO</th>
-                        <th>ANO / KM</th>
-                        <th>VALOR DE COMPRA</th>
-                        <th>STATUS</th>
-                        <th>
-                          <span className="sr-only">Ações</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {visible.map((vehicle) => (
-                        <tr key={vehicle.id}>
-                          <td>
-                            <div className="vehicle-cell">
-                              <div className="vehicle-thumb">
-                                <CarIllustration marca={vehicle.marca} />
-                              </div>
-                              <div>
-                                <button
-                                  className="vehicle-name"
-                                  onClick={() => editVehicle(vehicle)}
-                                >
-                                  {vehicle.marca} {vehicle.modelo}
-                                </button>
-                                <span className="vehicle-subtitle">
-                                  {vehicle.quilometragem === 0
-                                    ? 'Novo · Zero km'
-                                    : 'Seminovo / usado'}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <strong className="table-year">{vehicle.ano}</strong>
-                            <span className="vehicle-subtitle">
-                              {number(vehicle.quilometragem)} km
-                            </span>
-                          </td>
-                          <td>
-                            <strong className="table-money">{currency(vehicle.compra)}</strong>
-                            <span className="vehicle-subtitle">Valor de aquisição</span>
-                          </td>
-                          <td>
-                            <Status active={vehicle.ativo} />
-                          </td>
-                          <td>
-                            <VehicleActions
-                              vehicle={vehicle}
-                              onEdit={editVehicle}
-                              onToggle={toggleVehicle}
-                              onDelete={(vehicle) => setConfirm({ type: 'delete', vehicle })}
-                            />
-                          </td>
-                        </tr>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="vehicle-grid">
-                  {visible.map((vehicle) => (
-                    <article className="vehicle-card" key={vehicle.id}>
-                      <div className="card-art">
-                        <Status active={vehicle.ativo} />
-                        <CarIllustration marca={vehicle.marca} large />
-                      </div>
-                      <div className="card-body">
-                        <small>{vehicle.marca}</small>
-                        <button className="vehicle-name" onClick={() => editVehicle(vehicle)}>
-                          {vehicle.modelo}
-                        </button>
-                        <p>
-                          {vehicle.ano}
-                          <span>·</span>
-                          {number(vehicle.quilometragem)} km
-                          {vehicle.quilometragem === 0 && <span className="zero-km">Zero km</span>}
-                        </p>
-                        <div className="card-price">
-                          <div>
-                            <small>Valor de compra</small>
-                            <strong>{currency(vehicle.compra)}</strong>
-                          </div>
-                          <VehicleActions
-                            vehicle={vehicle}
-                            onEdit={editVehicle}
-                            onToggle={toggleVehicle}
-                            onDelete={(vehicle) => setConfirm({ type: 'delete', vehicle })}
-                          />
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-              <div className="pagination">
-                <span>
-                  {results.length
-                    ? `Mostrando ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, results.length)} de ${results.length} veículos`
-                    : '0 veículos'}
-                </span>
-                <div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label="Página anterior"
-                    disabled={currentPage === 1}
-                    onClick={() => setPage(currentPage - 1)}
-                  >
-                    <ChevronLeft size={16} />
-                  </Button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                    .map((p, index, pages) => (
-                      <span key={p} className="page-item">
-                        {index > 0 && p - pages[index - 1] > 1 && (
-                          <span className="page-gap">…</span>
-                        )}
-                        <Button
-                          variant={p === currentPage ? 'default' : 'ghost'}
-                          size="sm"
-                          aria-label={`Página ${p}`}
-                          aria-current={p === currentPage ? 'page' : undefined}
-                          onClick={() => setPage(p)}
-                        >
-                          {p}
-                        </Button>
-                      </span>
-                    ))}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    aria-label="Próxima página"
-                    disabled={currentPage === totalPages}
-                    onClick={() => setPage(currentPage + 1)}
-                  >
-                    <ChevronRight size={16} />
-                  </Button>
-                </div>
-              </div>
-            </section>
+                      {!summary.totalVeiculos && (
+                        <p className="muted">Cadastre veículos para visualizar a distribuição.</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="overview-callout">
+                    <span className="callout-icon">
+                      <ArrowUpRight size={30} />
+                    </span>
+                    <span className="eyebrow">PRÓXIMA PARADA</span>
+                    <h2>
+                      Seu próximo negócio
+                      <br />
+                      começa no estoque.
+                    </h2>
+                    <p>
+                      Atualize os veículos, organize a galeria de fotos e prepare cada oportunidade.
+                    </p>
+                    <Button onClick={() => navigate('estoque')}>
+                      Explorar estoque
+                      <ArrowUpRight size={17} />
+                    </Button>
+                  </div>
+                </section>
+              )
+            ))}
+          {section === 'estoque' && (
+            <Stock
+              revision={revision}
+              search={search}
+              onSearchChange={setSearch}
+              brands={Object.keys(summary?.marcas ?? {})}
+              onChanged={changed}
+              formRequested={formRequested}
+              closeForm={() => setFormRequested(false)}
+            />
+          )}
+          {section === 'clientes' && (
+            <Customers
+              revision={revision}
+              onChanged={changed}
+              formRequested={formRequested}
+              closeForm={() => setFormRequested(false)}
+            />
+          )}
+          {section === 'vendas' && (
+            <Sales
+              revision={revision}
+              onChanged={changed}
+              formRequested={formRequested}
+              closeForm={() => setFormRequested(false)}
+            />
           )}
           <footer className="page-footer">
             <span>
               <ShieldCheck size={14} />
-              Demonstração local · sem conexão com a API
+              Dados persistidos pela API · Concessionária Gomez
             </span>
-            <button onClick={() => setConfirm({ type: 'reset' })}>
-              <RotateCcw size={13} />
-              Restaurar dados de exemplo
-            </button>
+            <a href="/creditos-fotos.html" target="_blank" rel="noreferrer">
+              Créditos das fotos de referência
+            </a>
           </footer>
         </main>
       </div>
-      {formOpen && (
-        <VehicleForm
-          key={editing?.id ?? 'new'}
-          vehicle={editing}
-          open={formOpen}
-          onClose={() => setFormOpen(false)}
-          onSave={saveVehicle}
-        />
-      )}
-      <Dialog
-        open={confirm !== null}
-        onOpenChange={(open) => {
-          if (!open) setConfirm(null);
-        }}
-      >
-        <DialogContent className="confirm-dialog">
-          <div className="dialog-symbol danger">
-            {confirm?.type === 'delete' ? <Trash2 size={24} /> : <RotateCcw size={24} />}
-          </div>
-          <DialogTitle className="dialog-title">
-            {confirm?.type === 'delete' ? 'Excluir este veículo?' : 'Começar de novo?'}
-          </DialogTitle>
-          <DialogDescription className="muted">
-            {confirm?.type === 'delete'
-              ? `${confirm.vehicle.marca} ${confirm.vehicle.modelo} será removido dos dados locais. Essa ação não pode ser desfeita.`
-              : 'Os cadastros e alterações desta demonstração serão substituídos pelos 14 veículos de exemplo.'}
-          </DialogDescription>
-          <div className="form-footer">
-            <Button variant="outline" onClick={() => setConfirm(null)}>
-              Cancelar
-            </Button>
-            <Button variant="destructive" onClick={confirmAction}>
-              {confirm?.type === 'delete' ? 'Excluir veículo' : 'Restaurar exemplos'}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
       <Dialog open={infoOpen} onOpenChange={setInfoOpen}>
         <DialogContent>
           <div className="dialog-symbol">
             <Sparkles size={24} />
           </div>
-          <DialogTitle className="dialog-title">Um primeiro olhar para o futuro.</DialogTitle>
+          <DialogTitle className="dialog-title">Seu negócio, conectado.</DialogTitle>
           <DialogDescription className="muted">
-            Este é um protótipo funcional do painel da Concessionária Gomez.
+            Painel de gestão da Concessionária Gomez.
           </DialogDescription>
           <div className="info-copy">
             <p>
-              Você pode buscar, filtrar, cadastrar, editar, ativar, inativar e excluir veículos. Os
-              dados ficam apenas neste navegador.
+              Estoque, clientes e vendas são consultados e gravados na API. O banco de dados mantém
+              os cadastros, e o servidor guarda os arquivos das fotos.
             </p>
             <p>
-              Os indicadores consideram todo o estoque. Os valores de venda são simulações; na
-              integração definitiva, os cálculos virão do domínio Java.
+              Abra a galeria de um veículo para enviar vários ângulos, substituir imagens ou remover
+              fotos. A foto principal aparece no catálogo.
             </p>
             <p>
-              Clientes, vendas e fotos reais ficam para as próximas etapas. As imagens dos veículos
-              são ilustrações genéricas.
+              O preço sugerido e os indicadores financeiros vêm do domínio Java. Filtros e paginação
+              são processados pelo backend.
             </p>
           </div>
           <Button onClick={() => setInfoOpen(false)}>
@@ -797,7 +469,6 @@ export default function App() {
     </div>
   );
 }
-
 function Stat({
   label,
   value,
@@ -819,67 +490,9 @@ function Stat({
       </div>
       <strong className="stat-value">{value}</strong>
       <span className="stat-description">
-        {featured ? (
-          <ArrowUpRight size={13} />
-        ) : label === 'Investido em ativos' ? (
-          <ArrowDownLeft size={13} />
-        ) : (
-          <span className="stat-dot" />
-        )}
+        <span className="stat-dot" />
         {description}
       </span>
     </article>
-  );
-}
-function Status({ active }: { active: boolean }) {
-  return (
-    <span className={`status-badge ${active ? 'active' : 'inactive'}`}>
-      <span />
-      {active ? 'Ativo' : 'Inativo'}
-    </span>
-  );
-}
-function VehicleActions({
-  vehicle,
-  onEdit,
-  onToggle,
-  onDelete,
-}: {
-  vehicle: Carro;
-  onEdit: (vehicle: Carro) => void;
-  onToggle: (vehicle: Carro) => void;
-  onDelete: (vehicle: Carro) => void;
-}) {
-  return (
-    <div className="vehicle-actions">
-      <Button
-        size="icon"
-        variant="ghost"
-        title="Editar veículo"
-        aria-label={`Editar ${vehicle.marca} ${vehicle.modelo}`}
-        onClick={() => onEdit(vehicle)}
-      >
-        <Pencil size={15} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        title={vehicle.ativo ? 'Inativar veículo' : 'Ativar veículo'}
-        aria-label={`${vehicle.ativo ? 'Inativar' : 'Ativar'} ${vehicle.marca} ${vehicle.modelo}`}
-        onClick={() => onToggle(vehicle)}
-      >
-        <Power size={15} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="delete-action"
-        title="Excluir veículo"
-        aria-label={`Excluir ${vehicle.marca} ${vehicle.modelo}`}
-        onClick={() => onDelete(vehicle)}
-      >
-        <Trash2 size={15} />
-      </Button>
-    </div>
   );
 }

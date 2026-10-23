@@ -160,20 +160,39 @@ graph TD
 ---
 
 ### 🔹 Fase 5: Frontend Moderno (Painel do Funcionário)
-- [ ] **Mockup de Interface (UI Concept):**
-  - Visualização conceitual salva em [concessionaria-dashboard-ui.png](file:///C:/Projetos/concessionaria/concessionaria-dashboard-ui.png).
-- [ ] **Tecnologia recomendada: React (Vite + TypeScript) ou Angular / Vue / Tailwind CSS:**
+- [x] **Interface implementada em código:**
+  - Painel local e editável em `frontend/`, com instruções em `frontend/README.md`.
+- [x] **Tecnologia: React (Vite + TypeScript) e Tailwind CSS:**
   - Interface SPA (Single Page Application) limpa, responsiva e com visual profissional.
-- [ ] **Dashboard Principal:**
+- [x] **Dashboard Principal:**
   - Total de veículos em estoque, valor total investido e estimativa de faturamento com margem.
-- [ ] **Grid / Catálogo Interativo com Cards:**
+  - Indicadores de todo o estoque via `GET /dashboard`; preço sugerido calculado pela entidade `Carro` no backend.
+- [x] **Grid / Catálogo Interativo com Cards:**
   - Exibição visual de cada carro (marca, modelo, ano, crachá "Ativo/Inativo", valor sugerido de venda).
   - Ações rápidas: botão de alternar ativo/inativo, editar e excluir com modal de confirmação.
-- [ ] **Formulário de Cadastro/Edição:**
+- [x] **Formulário de Cadastro/Edição:**
   - Validação de campos em tempo real com mensagens amigáveis em português (consumindo o *Problem Details* do backend).
+- [x] **Integração real de Estoque, Clientes e Vendas:**
+  - CRUD, paginação e ordenação; filtros de veículos enviados à API.
+  - Emissão e cancelamento de vendas com atualização do estoque pelo backend.
+  - Fonte de dados de demonstração e persistência em localStorage removidas.
+- [x] **Galeria com múltiplas fotos por veículo:**
+  - Janela com upload múltiplo, prévias, descrição por ângulo, miniaturas, navegação, substituição e remoção com confirmação.
+  - Contrato da foto principal em `/carros/{id}/foto` preservado; fotos complementares em `/carros/{id}/fotos`.
+  - Migration `V009__cria-galeria-fotos-carro.sql`; JPEG/PNG até 10 MB, com validação do conteúdo.
+  - Metadados no MySQL e arquivos no storage local da API (`catalogo-fotos/`).
+  - Carga de exemplos `afterMigrate.sql` isolada em recursos de testes para preservar os dados reais.
 
 ---
 
+### Ajustes de experiência do painel
+- [x] Layout compacto inspirado em `concessionaria-dashboard-ui.png`, com destaque ciano e logotipos das fabricantes.
+- [x] Modos escuro e claro com botão discreto no topo e preferência persistida.
+- [x] Máscaras monetárias brasileiras em compra, venda e filtros; CPF/CNPJ, telefone e CEP durante a digitação.
+- [x] Consulta automática ao ViaCEP, preenchimento do endereço e alternativa manual em falhas ou dados incompletos.
+- [x] Fotos encapsuladas nos cards e visualização proporcional na galeria.
+
+---
 ### 🔹 Fase 6: DevOps & Containerização Completa
 - [ ] **Dockerfile Multi-Stage para o Spring Boot:**
   - Criação do `Dockerfile` otimizado para compilar e empacotar a aplicação em imagem leve (Alpine/Distroless).

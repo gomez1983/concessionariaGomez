@@ -58,6 +58,11 @@ public class DiscoLocalFotoStorageService implements FotoStorageService {
     }
 
     private Path getArquivoPath(String nomeArquivo) {
-        return storageProperties.getLocal().getDiretorioFotos().resolve(Path.of(nomeArquivo));
+        Path raiz = storageProperties.getLocal().getDiretorioFotos().toAbsolutePath().normalize();
+        Path arquivo = raiz.resolve(nomeArquivo).normalize();
+        if (!arquivo.startsWith(raiz) || arquivo.equals(raiz)) {
+            throw new NegocioException("Nome de arquivo de foto inválido.");
+        }
+        return arquivo;
     }
 }

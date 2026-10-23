@@ -32,6 +32,9 @@ build/
 ### VS Code ###
 .vscode/
 
+# Arquivos enviados pelos usuários (persistência local de fotos)
+/catalogo-fotos/
+
 ### Local storage & Uploads ###
 catalogo-fotos/
 

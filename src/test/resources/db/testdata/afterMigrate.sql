@@ -1,5 +1,6 @@
 set foreign_key_checks = 0;
 
+delete from foto_galeria_carro;
 delete from foto_carro;
 delete from venda;
 delete from carro;

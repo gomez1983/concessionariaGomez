@@ -9,6 +9,14 @@
       content="Protótipo local do painel de estoque da Concessionária Gomez."
     />
     <title>Estoque · Gomez</title>
+    <script>
+      try {
+        document.documentElement.dataset.theme =
+          localStorage.getItem('gomez:theme') === 'light' ? 'light' : 'dark';
+      } catch {
+        document.documentElement.dataset.theme = 'dark';
+      }
+    </script>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   </head>
   <body>
