@@ -35,6 +35,9 @@ public class Carro {
     @Column(nullable = false)
     private BigDecimal compra;
 
+    @Column(nullable = false)
+    private Integer quilometragem = 0;
+
     private Boolean ativo = Boolean.TRUE;
 
     @CreationTimestamp
@@ -47,6 +50,10 @@ public class Carro {
 
     public void inativar() {
         setAtivo(false);
+    }
+
+    public boolean isZeroKm() {
+        return this.quilometragem != null && this.quilometragem == 0;
     }
 
     public BigDecimal calcularPrecoVendaSugerido() {

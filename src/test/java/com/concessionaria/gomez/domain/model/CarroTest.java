@@ -53,4 +53,20 @@ class CarroTest {
 
         assertThat(vendaSugerida).isEqualByComparingTo(new BigDecimal("351890.61"));
     }
+
+    @Test
+    @DisplayName("Deve identificar corretamente quando o veículo é 0 km")
+    void deveIdentificarVeiculoZeroKm() {
+        Carro carroZero = new Carro();
+        carroZero.setQuilometragem(0);
+        assertThat(carroZero.isZeroKm()).isTrue();
+
+        Carro carroUsado = new Carro();
+        carroUsado.setQuilometragem(25000);
+        assertThat(carroUsado.isZeroKm()).isFalse();
+
+        Carro carroSemKm = new Carro();
+        carroSemKm.setQuilometragem(null);
+        assertThat(carroSemKm.isZeroKm()).isFalse();
+    }
 }

@@ -6,18 +6,21 @@ import com.concessionaria.gomez.api.model.CarroModel;
 import com.concessionaria.gomez.api.model.input.CarroInput;
 import com.concessionaria.gomez.domain.exception.CarroNaoEncontradoException;
 import com.concessionaria.gomez.domain.exception.NegocioException;
+import com.concessionaria.gomez.domain.filter.CarroFilter;
 import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.repository.CarroRepository;
 import com.concessionaria.gomez.domain.service.CadastroCarroService;
+import com.concessionaria.gomez.infrastructure.repository.spec.CarroSpecs;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
-import java.util.List;
 
 @RestController
 @RequestMapping(value = "/carros")
@@ -38,19 +41,18 @@ public class CarroController {
     private CarroInputDisassembler carroInputDisassembler;
 
     @GetMapping
-    @Operation(summary = "Método para listar veículos (opcionalmente filtrados por ano e faixa de valores)")
-    public List<CarroModel> listar(
-            @RequestParam(required = false) Integer ano,
-            @RequestParam(required = false) BigDecimal minValor,
-            @RequestParam(required = false) BigDecimal maxValor) {
+    @Operation(summary = "Método para listar veículos (com filtros dinâmicos via Specification, paginação e ordenação)")
+    public Page<CarroModel> listar(
+            @ParameterObject CarroFilter filtro,
+            @ParameterObject @PageableDefault(size = 10) Pageable pageable) {
 
-        List<Carro> carros = carroRepository.findComFiltros(ano, minValor, maxValor);
+        Page<Carro> carrosPage = carroRepository.findAll(CarroSpecs.usandoFiltro(filtro), pageable);
 
-        return carroModelAssembler.toCollectionModel(carros);
+        return carrosPage.map(carroModelAssembler::toModel);
     }
 
     @GetMapping("/{carroId}")
-    @Operation(summary = "Retorna um veículo único")
+    @Operation(summary = "Retorna um veículo único com links HATEOAS")
     public CarroModel buscar(@PathVariable Long carroId) {
         Carro carro = cadastroCarro.buscarOuFalhar(carroId);
 

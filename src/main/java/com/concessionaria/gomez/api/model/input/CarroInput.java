@@ -27,6 +27,10 @@ public class CarroInput {
     @PositiveOrZero
     private BigDecimal compra;
 
+    @NotNull(message = "A quilometragem é obrigatória")
+    @PositiveOrZero(message = "A quilometragem não pode ser negativa")
+    private Integer quilometragem;
+
     @PastOrPresent
     private OffsetDateTime dataCompra;
 }

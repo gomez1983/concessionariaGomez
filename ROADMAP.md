@@ -10,7 +10,7 @@ Documento criado em **13/09/2026** consolidando o diagnóstico atual da aplicaç
 - [x] **Framework:** Spring Boot 3.3.4 com Maven e Java 21 nativo.
 - [x] **Documentação da API:** OpenAPI 3 / Swagger UI moderno via SpringDoc em `/swagger-ui/index.html`.
 - [x] **Banco & Migrations:** Flyway gerenciando scripts com carga de testes automática (`afterMigrate.sql`).
-- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo e suite REST-Assured.
+- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo, paginação, ordenação, Specifications, HATEOAS e suite REST-Assured.
 - [x] **Auditoria de Segurança:** Skill automatizada integrada (`.agents/skills/security-audit/`).
 
 ---
@@ -71,23 +71,44 @@ graph TD
 
 ---
 
-### 🔹 Fase 3: Recursos Avançados de API RESTful
+### 🔹 Fase 3: Recursos Avançados de API RESTful (100% Concluída)
 - [x] **Filtros por Ano e Faixa de Valores (`minValor`, `maxValor` e BETWEEN):**
-  - **O que foi feito:** Evolução do endpoint de listagem `GET /carros` para suportar consultas com filtros opcionais combinados de `ano`, `minValor` e `maxValor`.
+  - **O que foi feito:** Suporte a filtros numéricos combinados de ano e preço.
+  - **Como funciona:** JPQL parametrizada flexível e 100% imune a SQL Injection.
+  - **Validação e Testes:** Testes integrados com REST-Assured e requisições Postman.
+- [x] **Paginação e Ordenação:**
+  - **O que foi feito:** Endpoint `GET /carros` atualizado para receber `Pageable` com `@PageableDefault(size = 10)`.
+  - **Como funciona:** Execução via `LIMIT` e `OFFSET` com `countQuery` dedicada, devolvendo metadados de total de registros e páginas.
+  - **Validação e Testes:** Teste unitário em `CarroControllerTest`, testes em `CadastroCarroIT` e Postman.
+- [x] **Filtros Dinâmicos Avançados com Specification (marca, modelo, ativo):**
+  - **O que foi feito:** Implementado `JpaSpecificationExecutor<Carro>`, classe de especificação `CarroSpecs` e DTO `CarroFilter`.
   - **Como funciona:**
-    - Criada a consulta JPQL flexível e parametrizada `findComFiltros` no `CarroRepository` usando cláusulas condicionais nulas (`(:minValor is null or c.compra >= :minValor)`).
-    - Permite busca por valor mínimo (`?minValor=50000`), valor máximo (`?maxValor=200000`) e intervalo fechado BETWEEN (`?minValor=50000&maxValor=200000`), mantendo a possibilidade de combinar com `?ano=2022`.
-    - 100% segura contra SQL Injection (parâmetros nomeados gerenciados nativamente pelo Hibernate).
+    - Consultas dinâmicas via *Criteria API*: cláusulas `WHERE` são geradas sob demanda apenas para os parâmetros preenchidos na URL.
+    - Suporte a busca textual parcial e case-insensitive para `marca` (ex.: `?marca=merc`) e `modelo` (ex.: `?modelo=classe`).
+    - Filtro booleano por status ativo (`?ativo=true` ou `false`).
+    - Totalmente integrado à paginação e ordenação em uma única chamada.
   - **Validação e Testes:**
-    - Adicionados 3 novos testes de integração automatizados com REST-Assured em `CadastroCarroIT.java`.
-    - Coleção Postman (`concessionaria-postman-collection.json`) atualizada com as requisições `1.2`, `1.3` e `1.4`.
-- [ ] **Paginação e Ordenação:**
-  - Implementar suporte a `Pageable` no endpoint `GET /carros` (`?page=0&size=10&sort=compra,desc`).
-  - Prevenir sobrecarga de memória caso a base cresça para milhares de veículos.
-- [ ] **Filtros Dinâmicos Avançados com Specification (marca, modelo, ativo):**
-  - Permitir buscas com texto parcial e múltiplos predicados na URL.
-- [ ] **Maturidade REST com HATEOAS (Richardson Nível 3):**
-  - Adicionar links hipermídia nas respostas dos carros (ex.: links para self, ativação, inativação e fotos).
+    - Teste unitário `CarroSpecsTest.java` com Mockito testando predicados dinâmicos e casos nulos.
+    - Testes de integração em `CadastroCarroIT.java` e novas requisições 1.8 e 1.9 no Postman.
+- [x] **Suporte a Quilometragem e Filtro por Range de KM (`minQuilometragem`, `maxQuilometragem` e regra `zeroKm`):**
+  - **O que foi feito:** Adicionada a coluna `quilometragem` no banco via migration `V005__adiciona-quilometragem-em-carro.sql`, campo na entidade, DTOs de entrada e saída, regra de negócio `isZeroKm()` e filtros de range no `CarroSpecs`.
+  - **Como funciona:**
+    - Validação de entrada `@PositiveOrZero` garantindo que não existam valores negativos.
+    - Regra de negócio na entidade para identificação automática de veículos 0 km.
+    - Consultas com range de km (ex.: `?minQuilometragem=10000&maxQuilometragem=50000`).
+  - **Validação e Testes:**
+    - Testes unitários em `CarroTest`, `CarroInputTest`, `CarroInputDisassemblerTest` e `CarroSpecsTest`.
+    - Teste de integração em `CadastroCarroIT` e requisição 1.10 no Postman.
+- [x] **Maturidade REST com HATEOAS (Richardson Nível 3):**
+  - **O que foi feito:** Adicionada a dependência `spring-boot-starter-hateoas` e implementado modelo hipermídia com `RepresentationModel`.
+  - **Como funciona:**
+    - O modelo `CarroModel` passa a carregar o nó `_links` guiando o cliente da API pelas ações disponíveis:
+      - `self`: link direto para o próprio recurso (`GET /carros/{id}`);
+      - `carros`: link para voltar à coleção completa (`GET /carros`);
+      - `inativar` / `ativar`: link dinâmico condicional que informa a ação de negócio válida para aquele carro específico de acordo com seu status atual.
+  - **Validação e Testes:**
+    - Teste unitário `CarroModelAssemblerTest.java` validando a geração dos links `self`, `carros`, `inativar` e `ativar`.
+    - Testes integrados em `CadastroCarroIT.java` verificando a presença de `_links`.
 
 ---
 

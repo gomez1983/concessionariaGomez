@@ -81,7 +81,9 @@ public class CadastroCarroIT {
             .when()
                 .get()
             .then()
-                .body("", Matchers.hasSize(quantidadeCarrosCadastrados));
+                .statusCode(HttpStatus.OK.value())
+                .body("content", Matchers.hasSize(quantidadeCarrosCadastrados))
+                .body("totalElements", equalTo(quantidadeCarrosCadastrados));
     }
 
     @Test
@@ -94,9 +96,54 @@ public class CadastroCarroIT {
                 .get()
             .then()
                 .statusCode(HttpStatus.OK.value())
-                .body("", Matchers.hasSize(1))
-                .body("[0].modelo", equalTo("Classe A"))
-                .body("[0].ano", equalTo(2022));
+                .body("content", Matchers.hasSize(1))
+                .body("content[0].modelo", equalTo("Classe A"))
+                .body("content[0].ano", equalTo(2022));
+    }
+
+    @Test
+    @DisplayName("Deve filtrar dinamicamente por texto parcial de marca e modelo (Specification)")
+    public void deveFiltrarPorTextoParcialDeMarcaEModelo_QuandoConsultarComSpecification() {
+        RestAssured.given()
+                .queryParam("marca", "merc")
+                .queryParam("modelo", "classe")
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("content", Matchers.hasSize(1))
+                .body("content[0].marca", equalTo("Mercedes"))
+                .body("content[0].modelo", equalTo("Classe A"));
+    }
+
+    @Test
+    @DisplayName("Deve filtrar dinamicamente por range de quilometragem (minQuilometragem e maxQuilometragem)")
+    public void deveFiltrarPorRangeDeQuilometragem_QuandoConsultarComSpecification() {
+        RestAssured.given()
+                .queryParam("minQuilometragem", 10000)
+                .queryParam("maxQuilometragem", 20000)
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("content", Matchers.hasSize(1))
+                .body("content[0].modelo", equalTo("Classe A"))
+                .body("content[0].quilometragem", equalTo(12000));
+    }
+
+    @Test
+    @DisplayName("Deve filtrar dinamicamente por status ativo (Specification)")
+    public void deveFiltrarPorStatusAtivo_QuandoConsultarComSpecification() {
+        RestAssured.given()
+                .queryParam("ativo", true)
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("content", Matchers.hasSize(2));
     }
 
     @Test
@@ -109,9 +156,9 @@ public class CadastroCarroIT {
                 .get()
             .then()
                 .statusCode(HttpStatus.OK.value())
-                .body("", Matchers.hasSize(1))
-                .body("[0].modelo", equalTo("Classe A"))
-                .body("[0].compra", equalTo(319900.00f));
+                .body("content", Matchers.hasSize(1))
+                .body("content[0].modelo", equalTo("Classe A"))
+                .body("content[0].compra", equalTo(319900.00f));
     }
 
     @Test
@@ -124,9 +171,9 @@ public class CadastroCarroIT {
                 .get()
             .then()
                 .statusCode(HttpStatus.OK.value())
-                .body("", Matchers.hasSize(1))
-                .body("[0].modelo", equalTo("M5"))
-                .body("[0].compra", equalTo(150000.00f));
+                .body("content", Matchers.hasSize(1))
+                .body("content[0].modelo", equalTo("M5"))
+                .body("content[0].compra", equalTo(150000.00f));
     }
 
     @Test
@@ -140,13 +187,59 @@ public class CadastroCarroIT {
                 .get()
             .then()
                 .statusCode(HttpStatus.OK.value())
-                .body("", Matchers.hasSize(1))
-                .body("[0].modelo", equalTo("M5"))
-                .body("[0].compra", equalTo(150000.00f));
+                .body("content", Matchers.hasSize(1))
+                .body("content[0].modelo", equalTo("M5"))
+                .body("content[0].compra", equalTo(150000.00f));
     }
 
     @Test
-    @DisplayName("Deve retornar status 200 e dados corretos quando consultar carro por ID existente")
+    @DisplayName("Deve retornar página com tamanho definido quando passar page e size")
+    public void deveRetornarPaginaComTamanhoDefinido_QuandoConsultarComPageESize() {
+        RestAssured.given()
+                .queryParam("page", 0)
+                .queryParam("size", 1)
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("content", Matchers.hasSize(1))
+                .body("size", equalTo(1))
+                .body("number", equalTo(0))
+                .body("totalElements", equalTo(quantidadeCarrosCadastrados))
+                .body("totalPages", equalTo(2));
+    }
+
+    @Test
+    @DisplayName("Deve retornar carros ordenados por valor decrescente quando passar sort=compra,desc")
+    public void deveRetornarCarrosOrdenadosPorValorDecrescente_QuandoConsultarComSort() {
+        RestAssured.given()
+                .queryParam("sort", "compra,desc")
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("content[0].modelo", equalTo("Classe A"))
+                .body("content[1].modelo", equalTo("M5"));
+    }
+
+    @Test
+    @DisplayName("Deve retornar carros ordenados por ano ascendente quando passar sort=ano,asc")
+    public void deveRetornarCarrosOrdenadosPorAnoAscendente_QuandoConsultarComSort() {
+        RestAssured.given()
+                .queryParam("sort", "ano,asc")
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("content[0].ano", equalTo(2018))
+                .body("content[1].ano", equalTo(2022));
+    }
+
+    @Test
+    @DisplayName("Deve retornar status 200 e dados corretos quando consultar carro por ID existente com links HATEOAS e quilometragem")
     public void deveRetornarRespostasEStatusCorretos_QuandoConsultarCarroExistente() {
         RestAssured.given()
                 .pathParam("carroId", carroMercedes.getId())
@@ -160,7 +253,12 @@ public class CadastroCarroIT {
                 .body("modelo", equalTo(carroMercedes.getModelo()))
                 .body("ano", equalTo(carroMercedes.getAno()))
                 .body("compra", equalTo(319900.00f))
-                .body("ativo", equalTo(true));
+                .body("quilometragem", equalTo(12000))
+                .body("zeroKm", equalTo(false))
+                .body("ativo", equalTo(true))
+                .body("_links.self.href", Matchers.notNullValue())
+                .body("_links.carros.href", Matchers.notNullValue())
+                .body("_links.inativar.href", Matchers.notNullValue());
     }
 
     @Test
@@ -190,9 +288,9 @@ public class CadastroCarroIT {
     }
 
     @Test
-    @DisplayName("Deve retornar status 201 e preço de venda sugerido ao cadastrar carro com dados válidos")
+    @DisplayName("Deve retornar status 201 e preço de venda sugerido ao cadastrar carro com dados válidos e quilometragem")
     public void deveRetornarStatus201_QuandoCadastrarCarro() {
-        // Audi compra 210000.00 -> venda sugerida 231000.00
+        // Audi compra 210000.00 -> venda sugerida 231000.00, km 15000
         RestAssured.given()
                 .body(jsonCorretoCarroAudi)
                 .contentType(ContentType.JSON)
@@ -205,7 +303,10 @@ public class CadastroCarroIT {
                 .body("modelo", equalTo("A8"))
                 .body("ano", equalTo(2022))
                 .body("compra", equalTo(210000.00f))
-                .body("venda", equalTo(231000.00f));
+                .body("venda", equalTo(231000.00f))
+                .body("quilometragem", equalTo(15000))
+                .body("zeroKm", equalTo(false))
+                .body("_links.self.href", Matchers.notNullValue());
     }
 
     @Test
@@ -234,8 +335,10 @@ public class CadastroCarroIT {
             .then()
                 .statusCode(HttpStatus.OK.value())
                 .body("marca", equalTo("Mercedes-Benz"))
-                .body("modelo", equalTo("Classe A 250 Turbo"))
-                .body("compra", equalTo(319900.00f));
+                .body("modelo", equalTo("Classe A Sedan"))
+                .body("compra", equalTo(340000.00f))
+                .body("quilometragem", equalTo(12000))
+                .body("_links.self.href", Matchers.notNullValue());
     }
 
     @Test
@@ -256,7 +359,8 @@ public class CadastroCarroIT {
                 .get("/{carroId}")
             .then()
                 .statusCode(HttpStatus.OK.value())
-                .body("ativo", equalTo(false));
+                .body("ativo", equalTo(false))
+                .body("_links.ativar.href", Matchers.notNullValue());
     }
 
     @Test
@@ -281,7 +385,8 @@ public class CadastroCarroIT {
                 .get("/{carroId}")
             .then()
                 .statusCode(HttpStatus.OK.value())
-                .body("ativo", equalTo(true));
+                .body("ativo", equalTo(true))
+                .body("_links.inativar.href", Matchers.notNullValue());
     }
 
     @Test
@@ -324,6 +429,7 @@ public class CadastroCarroIT {
         carroMercedes.setModelo("Classe A");
         carroMercedes.setAno(2022);
         carroMercedes.setCompra(new BigDecimal("319900.00"));
+        carroMercedes.setQuilometragem(12000);
         carroMercedes.setAtivo(true);
         carroRepository.save(carroMercedes);
 
@@ -332,6 +438,7 @@ public class CadastroCarroIT {
         carroBMW.setModelo("M5");
         carroBMW.setAno(2018);
         carroBMW.setCompra(new BigDecimal("150000.00"));
+        carroBMW.setQuilometragem(45000);
         carroBMW.setAtivo(true);
         carroRepository.save(carroBMW);
 

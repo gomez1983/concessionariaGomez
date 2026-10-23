@@ -25,13 +25,14 @@ class CarroInputDisassemblerTest {
     }
 
     @Test
-    @DisplayName("Deve converter CarroInput para nova entidade Carro")
+    @DisplayName("Deve converter CarroInput para nova entidade Carro incluindo quilometragem")
     void deveConverterInputParaEntidade() {
         CarroInput input = new CarroInput();
         input.setMarca("Honda");
         input.setModelo("Civic");
         input.setAno(2021);
         input.setCompra(new BigDecimal("120000.00"));
+        input.setQuilometragem(18000);
 
         Carro carro = disassembler.toDomainObject(input);
 
@@ -40,6 +41,7 @@ class CarroInputDisassemblerTest {
         assertThat(carro.getModelo()).isEqualTo("Civic");
         assertThat(carro.getAno()).isEqualTo(2021);
         assertThat(carro.getCompra()).isEqualByComparingTo(new BigDecimal("120000.00"));
+        assertThat(carro.getQuilometragem()).isEqualTo(18000);
     }
 
     @Test
@@ -53,6 +55,7 @@ class CarroInputDisassemblerTest {
         carroExistente.setModelo("Civic");
         carroExistente.setAno(2020);
         carroExistente.setCompra(new BigDecimal("100000.00"));
+        carroExistente.setQuilometragem(30000);
         carroExistente.setAtivo(true);
         carroExistente.setDataCompra(dataCriacaoOriginal);
 
@@ -61,6 +64,7 @@ class CarroInputDisassemblerTest {
         inputAtualizado.setModelo("Civic Touring");
         inputAtualizado.setAno(2021);
         inputAtualizado.setCompra(new BigDecimal("130000.00"));
+        inputAtualizado.setQuilometragem(35000);
         // dataCompra não é enviada (nula no DTO)
 
         disassembler.copyToDomainObject(inputAtualizado, carroExistente);
@@ -69,6 +73,7 @@ class CarroInputDisassemblerTest {
         assertThat(carroExistente.getModelo()).isEqualTo("Civic Touring");
         assertThat(carroExistente.getAno()).isEqualTo(2021);
         assertThat(carroExistente.getCompra()).isEqualByComparingTo(new BigDecimal("130000.00"));
+        assertThat(carroExistente.getQuilometragem()).isEqualTo(35000);
 
         // Campos preservados intactos
         assertThat(carroExistente.getId()).isEqualTo(1L);

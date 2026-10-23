@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
     "name": "Concessionaria Gomez API",
-    "description": "Coleção completa dos endpoints CRUD para a API de Concessionária Gomez",
+    "description": "Coleção completa dos endpoints CRUD para a API de Concessionária Gomez (com Specification, Quilometragem, Paginação, Ordenação e HATEOAS)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -23,7 +23,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["carros"]
         },
-        "description": "Retorna todos os veículos cadastrados no banco."
+        "description": "Retorna os veículos cadastrados no banco com paginação default (page=0, size=10), quilometragem, flag zeroKm e links HATEOAS."
       },
       "response": []
     },
@@ -117,7 +117,163 @@
       "response": []
     },
     {
-      "name": "2. Buscar Carro por ID",
+      "name": "1.5 Listar Carros com Paginação (page e size)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?page=0&size=5",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Número da página (iniciando em 0)"
+            },
+            {
+              "key": "size",
+              "value": "5",
+              "description": "Quantidade de registros por página"
+            }
+          ]
+        },
+        "description": "Retorna uma página específica com limite configurado de registros."
+      },
+      "response": []
+    },
+    {
+      "name": "1.6 Listar Carros com Ordenação (sort)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?sort=compra,desc",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "sort",
+              "value": "compra,desc",
+              "description": "Ordenação por propriedade e direção (asc ou desc)"
+            }
+          ]
+        },
+        "description": "Retorna veículos ordenados pelo valor de compra decrescente."
+      },
+      "response": []
+    },
+    {
+      "name": "1.7 Listar Carros com Paginação, Ordenação e Filtros",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?minValor=50000&sort=ano,desc&page=0&size=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "minValor",
+              "value": "50000",
+              "description": "Valor mínimo"
+            },
+            {
+              "key": "sort",
+              "value": "ano,desc",
+              "description": "Mais novos primeiro"
+            },
+            {
+              "key": "page",
+              "value": "0",
+              "description": "Primeira página"
+            },
+            {
+              "key": "size",
+              "value": "10",
+              "description": "10 veículos por página"
+            }
+          ]
+        },
+        "description": "Combina paginação, ordenação e filtros de consulta em uma única requisição."
+      },
+      "response": []
+    },
+    {
+      "name": "1.8 Filtrar por Marca e Modelo (Specification)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?marca=mercedes&modelo=classe",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "marca",
+              "value": "mercedes",
+              "description": "Busca parcial case-insensitive por marca"
+            },
+            {
+              "key": "modelo",
+              "value": "classe",
+              "description": "Busca parcial case-insensitive por modelo"
+            }
+          ]
+        },
+        "description": "Filtro dinâmico via Spring Data JPA Specification com busca textual parcial."
+      },
+      "response": []
+    },
+    {
+      "name": "1.9 Filtrar por Status Ativo (Specification)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?ativo=true",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "ativo",
+              "value": "true",
+              "description": "Filtrar por veículos ativos para venda"
+            }
+          ]
+        },
+        "description": "Filtro dinâmico pelo status ativo/inativo do veículo."
+      },
+      "response": []
+    },
+    {
+      "name": "1.10 Filtrar por Range de Quilometragem (Specification)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/carros?minQuilometragem=10000&maxQuilometragem=60000",
+          "host": ["{{baseUrl}}"],
+          "path": ["carros"],
+          "query": [
+            {
+              "key": "minQuilometragem",
+              "value": "10000",
+              "description": "Quilometragem mínima"
+            },
+            {
+              "key": "maxQuilometragem",
+              "value": "60000",
+              "description": "Quilometragem máxima"
+            }
+          ]
+        },
+        "description": "Filtra veículos por intervalo de quilometragem (seminovos, pouco rodados, etc.)."
+      },
+      "response": []
+    },
+    {
+      "name": "2. Buscar Carro por ID (HATEOAS)",
       "request": {
         "method": "GET",
         "header": [],
@@ -126,7 +282,7 @@
           "host": ["{{baseUrl}}"],
           "path": ["carros", "1"]
         },
-        "description": "Busca os detalhes de um veículo específico por ID."
+        "description": "Busca os detalhes de um veículo específico por ID, retornando quilometragem, zeroKm e links hipermídia HATEOAS (_links: self, carros, inativar/ativar)."
       },
       "response": []
     },
@@ -142,14 +298,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Corolla\",\n  \"ano\": 2022,\n  \"compra\": 120000.0\n}"
+          "raw": "{\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Corolla\",\n  \"ano\": 2022,\n  \"compra\": 120000.0,\n  \"quilometragem\": 25000\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/carros",
           "host": ["{{baseUrl}}"],
           "path": ["carros"]
         },
-        "description": "Cadastra um novo veículo no estoque."
+        "description": "Cadastra um novo veículo no estoque com sua respectiva quilometragem."
       },
       "response": []
     },
@@ -165,14 +321,14 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Chevette SL\",\n  \"ano\": 1989,\n  \"compra\": 18000.0\n}"
+          "raw": "{\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Chevette SL\",\n  \"ano\": 1989,\n  \"compra\": 18000.0,\n  \"quilometragem\": 190000\n}"
         },
         "url": {
           "raw": "{{baseUrl}}/carros/1",
           "host": ["{{baseUrl}}"],
           "path": ["carros", "1"]
         },
-        "description": "Atualiza os dados de um veículo existente."
+        "description": "Atualiza os dados de um veículo existente, incluindo quilometragem."
       },
       "response": []
     },
