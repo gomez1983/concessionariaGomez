@@ -10,7 +10,7 @@ Documento criado em **13/09/2026** consolidando o diagnóstico atual da aplicaç
 - [x] **Framework:** Spring Boot 3.3.4 com Maven e Java 21 nativo.
 - [x] **Documentação da API:** OpenAPI 3 / Swagger UI moderno via SpringDoc em `/swagger-ui/index.html`.
 - [x] **Banco & Migrations:** Flyway gerenciando scripts com carga de testes automática (`afterMigrate.sql`).
-- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo, paginação, ordenação, Specifications, HATEOAS e suite REST-Assured.
+- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo de Carros, Clientes, Vendas e Fotos, paginação, ordenação, Specifications, HATEOAS e suite de 46 testes unitários/integrados.
 - [x] **Auditoria de Segurança:** Skill automatizada integrada (`.agents/skills/security-audit/`).
 
 ---
@@ -104,23 +104,58 @@ graph TD
   - **Como funciona:**
     - O modelo `CarroModel` passa a carregar o nó `_links` guiando o cliente da API pelas ações disponíveis:
       - `self`: link direto para o próprio recurso (`GET /carros/{id}`);
+      - `foto`: link direto para os metadados da foto do veículo (`GET /carros/{id}/foto`);
       - `carros`: link para voltar à coleção completa (`GET /carros`);
       - `inativar` / `ativar`: link dinâmico condicional que informa a ação de negócio válida para aquele carro específico de acordo com seu status atual.
   - **Validação e Testes:**
-    - Teste unitário `CarroModelAssemblerTest.java` validando a geração dos links `self`, `carros`, `inativar` e `ativar`.
+    - Teste unitário `CarroModelAssemblerTest.java` validando a geração dos links `self`, `foto`, `carros`, `inativar` e `ativar`.
     - Testes integrados em `CadastroCarroIT.java` verificando a presença de `_links`.
 
 ---
 
-### 🔹 Fase 4: Expansão do Domínio de Negócio (Novas Entidades)
-- [ ] **Módulo de Clientes:**
-  - Criação da entidade `Cliente` (Nome, CPF/CNPJ, Telefone, E-mail, Endereço).
-- [ ] **Módulo de Propostas / Vendas:**
-  - Criação da entidade `Venda` associando `Carro`, `Cliente`, data da venda e valor final negociado.
-  - Atualização automática do status do carro para "Vendido" / "Inativo para venda".
-- [ ] **Upload e Armazenamento de Fotos do Veículo:**
-  - Endpoint `POST /carros/{id}/foto` para upload multipart.
-  - Armazenamento em diretório local ou compatível com S3 (usando MinIO no Docker).
+### 🔹 Fase 4: Expansão do Domínio de Negócio (100% Concluída)
+- [x] **Módulo de Clientes:**
+  - **O que foi feito:**
+    - Migration Flyway `V006__cria-tabela-cliente.sql` com constraints e unicidade de CPF/CNPJ.
+    - Carga inicial em `afterMigrate.sql` com clientes PF e PJ.
+    - Entidade [`Cliente`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/Cliente.java) e Value Object [`Endereco`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/Endereco.java) embutido (`@Embedded`).
+    - [`ClienteRepository`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/repository/ClienteRepository.java) com `JpaSpecificationExecutor` e validação de duplicidade por CPF/CNPJ.
+    - [`CadastroClienteService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/CadastroClienteService.java) com regras de negócio, ativação/inativação e exclusão protegida.
+    - Exceção de domínio [`ClienteNaoEncontradoException`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/exception/ClienteNaoEncontradoException.java).
+    - DTOs de entrada e saída: [`ClienteInput`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/input/ClienteInput.java), [`EnderecoInput`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/input/EnderecoInput.java), [`ClienteModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/ClienteModel.java) e [`EnderecoModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/EnderecoModel.java).
+    - [`ClienteModelAssembler`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/assembler/ClienteModelAssembler.java) com suporte completo a HATEOAS (`self`, `clientes`, `ativar`, `inativar`).
+    - [`ClienteInputDisassembler`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/assembler/ClienteInputDisassembler.java) blindado para cópia de dados.
+    - [`ClienteController`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/controller/ClienteController.java) com CRUD completo, paginação, ordenação e documentação OpenAPI 3.
+- [x] **Módulo de Propostas / Vendas:**
+  - **O que foi feito:**
+    - Migration Flyway `V007__cria-tabela-venda.sql` associando `Carro` e `Cliente` com chaves estrangeiras.
+    - Entidade [`Venda`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/Venda.java) com data da venda automática via `@CreationTimestamp`.
+    - Repositório [`VendaRepository`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/repository/VendaRepository.java) com busca otimizada (`join fetch`).
+    - Serviço de negócio [`EmissaoVendaService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/EmissaoVendaService.java) com regras críticas:
+      - Impede venda de veículos inativos ou já vendidos (`NegocioException`).
+      - Impede venda para clientes inativos.
+      - **Inativação automática do veículo no estoque** ao concretizar a venda.
+      - Cancelamento de venda com reativação automática do veículo no estoque.
+    - DTOs [`VendaInput`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/input/VendaInput.java), [`VendaModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/VendaModel.java), [`CarroResumoModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/CarroResumoModel.java) e [`ClienteResumoModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/ClienteResumoModel.java).
+    - [`VendaModelAssembler`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/assembler/VendaModelAssembler.java) com links HATEOAS (`self`, `vendas`, `carro`, `cliente`, `cancelar`).
+    - [`VendaController`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/controller/VendaController.java) com listagem paginada, busca individual, emissão e cancelamento.
+- [x] **Upload e Armazenamento de Fotos do Veículo:**
+  - **O que foi feito:**
+    - Migration Flyway `V008__cria-tabela-foto-carro.sql` vinculada à chave primária do carro.
+    - Entidade [`FotoCarro`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/FotoCarro.java) com `@MapsId` e metadados (`nomeArquivo`, `contentType`, `tamanho`, `descricao`).
+    - Interface [`FotoStorageService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/FotoStorageService.java) e implementação local [`DiscoLocalFotoStorageService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/infrastructure/service/storage/DiscoLocalFotoStorageService.java) desacoplada e preparada para substituição por S3/MinIO.
+    - Configuração de storage via [`StorageProperties`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/core/storage/StorageProperties.java).
+    - Serviço [`CatalogoFotoCarroService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/CatalogoFotoCarroService.java) que gerencia substituição e remoção de arquivos físicos e registros no banco com garantia transacional.
+    - DTOs [`FotoCarroInput`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/input/FotoCarroInput.java) e [`FotoCarroModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/FotoCarroModel.java).
+    - Controller [`CarroFotoController`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/controller/CarroFotoController.java) com suporte a:
+      - `PUT /carros/{id}/foto` (upload multipart/form-data)
+      - `GET /carros/{id}/foto` (metadados JSON com HATEOAS)
+      - `GET /carros/{id}/foto` (serviço direto do binário da imagem JPEG/PNG com `InputStreamResource`)
+      - `DELETE /carros/{id}/foto` (remoção da foto e do arquivo no disco)
+- [x] **Qualidade & Testes Automatizados:**
+  - Suite de testes expandida para **46 testes unitários e de integração com 100% de sucesso**.
+  - Testes cobrindo validação de DTOs, cálculo financeiro, emissão de vendas, regras de inativação, upload/substituição de fotos e HATEOAS.
+  - Coleção Postman atualizada com todas as pastas (`Carros`, `Fotos`, `Clientes`, `Vendas`).
 
 ---
 

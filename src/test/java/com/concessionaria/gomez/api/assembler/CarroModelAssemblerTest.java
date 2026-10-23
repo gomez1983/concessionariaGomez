@@ -62,6 +62,9 @@ class CarroModelAssemblerTest {
         assertThat(model.hasLink("self")).isTrue();
         assertThat(model.getLink("self").orElseThrow().getHref()).endsWith("/carros/1");
 
+        assertThat(model.hasLink("foto")).isTrue();
+        assertThat(model.getLink("foto").orElseThrow().getHref()).endsWith("/carros/1/foto");
+
         assertThat(model.hasLink("carros")).isTrue();
         assertThat(model.getLink("carros").orElseThrow().getHref()).endsWith("/carros");
 

@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "c1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c",
     "name": "Concessionaria Gomez API",
-    "description": "Coleção completa dos endpoints CRUD para a API de Concessionária Gomez (com Specification, Quilometragem, Paginação, Ordenação e HATEOAS)",
+    "description": "Coleção completa dos endpoints CRUD para a API de Concessionária Gomez organizada por pastas (Carros, Fotos de Veículos, Clientes e Vendas), com URL direta (http://localhost:8080), paginação, filtros Specification e HATEOAS.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,370 +14,744 @@
   ],
   "item": [
     {
-      "name": "1. Listar Carros",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"]
-        },
-        "description": "Retorna os veículos cadastrados no banco com paginação default (page=0, size=10), quilometragem, flag zeroKm e links HATEOAS."
-      },
-      "response": []
-    },
-    {
-      "name": "1.1 Filtrar Carros por Ano",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?ano=2007",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "ano",
-              "value": "2007",
-              "description": "Filtro opcional pelo ano de fabricação"
-            }
-          ]
-        },
-        "description": "Filtra os veículos pelo ano informado."
-      },
-      "response": []
-    },
-    {
-      "name": "1.2 Filtrar Carros por Valor Mínimo",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?minValor=50000",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "minValor",
-              "value": "50000",
-              "description": "Filtro opcional para veículos com valor de compra maior ou igual"
-            }
-          ]
-        },
-        "description": "Filtra os veículos com valor de compra maior ou igual ao minValor."
-      },
-      "response": []
-    },
-    {
-      "name": "1.3 Filtrar Carros por Valor Máximo",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?maxValor=200000",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "maxValor",
-              "value": "200000",
-              "description": "Filtro opcional para veículos com valor de compra menor ou igual"
-            }
-          ]
-        },
-        "description": "Filtra os veículos com valor de compra menor ou igual ao maxValor."
-      },
-      "response": []
-    },
-    {
-      "name": "1.4 Filtrar Carros por Faixa de Valores (BETWEEN)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?minValor=50000&maxValor=200000",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "minValor",
-              "value": "50000",
-              "description": "Valor mínimo da faixa"
+      "name": "Carros",
+      "item": [
+        {
+          "name": "1. Listar Carros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"]
             },
-            {
-              "key": "maxValor",
-              "value": "200000",
-              "description": "Valor máximo da faixa"
-            }
-          ]
+            "description": "Retorna os veículos cadastrados no banco com paginação default (page=0, size=10), quilometragem, flag zeroKm e links HATEOAS."
+          },
+          "response": []
         },
-        "description": "Filtra os veículos cujo valor de compra está entre minValor e maxValor (inclusive)."
-      },
-      "response": []
-    },
-    {
-      "name": "1.5 Listar Carros com Paginação (page e size)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?page=0&size=5",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "page",
-              "value": "0",
-              "description": "Número da página (iniciando em 0)"
+        {
+          "name": "1.1 Filtrar Carros por Ano",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?ano=2007",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "ano",
+                  "value": "2007",
+                  "description": "Filtro opcional pelo ano de fabricação"
+                }
+              ]
             },
-            {
-              "key": "size",
-              "value": "5",
-              "description": "Quantidade de registros por página"
-            }
-          ]
+            "description": "Filtra os veículos pelo ano informado."
+          },
+          "response": []
         },
-        "description": "Retorna uma página específica com limite configurado de registros."
-      },
-      "response": []
-    },
-    {
-      "name": "1.6 Listar Carros com Ordenação (sort)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?sort=compra,desc",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "sort",
-              "value": "compra,desc",
-              "description": "Ordenação por propriedade e direção (asc ou desc)"
-            }
-          ]
-        },
-        "description": "Retorna veículos ordenados pelo valor de compra decrescente."
-      },
-      "response": []
-    },
-    {
-      "name": "1.7 Listar Carros com Paginação, Ordenação e Filtros",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?minValor=50000&sort=ano,desc&page=0&size=10",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "minValor",
-              "value": "50000",
-              "description": "Valor mínimo"
+        {
+          "name": "1.2 Filtrar Carros por Valor Mínimo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?minValor=50000",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "minValor",
+                  "value": "50000",
+                  "description": "Filtro opcional para veículos com valor de compra maior ou igual"
+                }
+              ]
             },
-            {
-              "key": "sort",
-              "value": "ano,desc",
-              "description": "Mais novos primeiro"
+            "description": "Filtra os veículos com valor de compra maior ou igual ao minValor."
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 Filtrar Carros por Valor Máximo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?maxValor=200000",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "maxValor",
+                  "value": "200000",
+                  "description": "Filtro opcional para veículos com valor de compra menor ou igual"
+                }
+              ]
             },
-            {
-              "key": "page",
-              "value": "0",
-              "description": "Primeira página"
+            "description": "Filtra os veículos com valor de compra menor ou igual ao maxValor."
+          },
+          "response": []
+        },
+        {
+          "name": "1.4 Filtrar Carros por Faixa de Valores (BETWEEN)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?minValor=50000&maxValor=200000",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "minValor",
+                  "value": "50000",
+                  "description": "Valor mínimo da faixa"
+                },
+                {
+                  "key": "maxValor",
+                  "value": "200000",
+                  "description": "Valor máximo da faixa"
+                }
+              ]
             },
-            {
-              "key": "size",
-              "value": "10",
-              "description": "10 veículos por página"
-            }
-          ]
+            "description": "Filtra os veículos cujo valor de compra está entre minValor e maxValor (inclusive)."
+          },
+          "response": []
         },
-        "description": "Combina paginação, ordenação e filtros de consulta em uma única requisição."
-      },
-      "response": []
-    },
-    {
-      "name": "1.8 Filtrar por Marca e Modelo (Specification)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?marca=mercedes&modelo=classe",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "marca",
-              "value": "mercedes",
-              "description": "Busca parcial case-insensitive por marca"
+        {
+          "name": "1.5 Listar Carros com Paginação (page e size)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?page=0&size=5",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Número da página (iniciando em 0)"
+                },
+                {
+                  "key": "size",
+                  "value": "5",
+                  "description": "Quantidade de registros por página"
+                }
+              ]
             },
-            {
-              "key": "modelo",
-              "value": "classe",
-              "description": "Busca parcial case-insensitive por modelo"
-            }
-          ]
+            "description": "Retorna uma página específica com limite configurado de registros."
+          },
+          "response": []
         },
-        "description": "Filtro dinâmico via Spring Data JPA Specification com busca textual parcial."
-      },
-      "response": []
-    },
-    {
-      "name": "1.9 Filtrar por Status Ativo (Specification)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?ativo=true",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "ativo",
-              "value": "true",
-              "description": "Filtrar por veículos ativos para venda"
-            }
-          ]
-        },
-        "description": "Filtro dinâmico pelo status ativo/inativo do veículo."
-      },
-      "response": []
-    },
-    {
-      "name": "1.10 Filtrar por Range de Quilometragem (Specification)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros?minQuilometragem=10000&maxQuilometragem=60000",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"],
-          "query": [
-            {
-              "key": "minQuilometragem",
-              "value": "10000",
-              "description": "Quilometragem mínima"
+        {
+          "name": "1.6 Listar Carros com Ordenação (sort)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?sort=compra,desc",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "sort",
+                  "value": "compra,desc",
+                  "description": "Ordenação por propriedade e direção (asc ou desc)"
+                }
+              ]
             },
-            {
-              "key": "maxQuilometragem",
-              "value": "60000",
-              "description": "Quilometragem máxima"
-            }
-          ]
+            "description": "Retorna veículos ordenados pelo valor de compra decrescente."
+          },
+          "response": []
         },
-        "description": "Filtra veículos por intervalo de quilometragem (seminovos, pouco rodados, etc.)."
-      },
-      "response": []
+        {
+          "name": "1.7 Listar Carros com Paginação, Ordenação e Filtros",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?minValor=50000&sort=ano,desc&page=0&size=10",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "minValor",
+                  "value": "50000",
+                  "description": "Valor mínimo"
+                },
+                {
+                  "key": "sort",
+                  "value": "ano,desc",
+                  "description": "Mais novos primeiro"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Primeira página"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "10 veículos por página"
+                }
+              ]
+            },
+            "description": "Combina paginação, ordenação e filtros de consulta em uma única requisição."
+          },
+          "response": []
+        },
+        {
+          "name": "1.8 Filtrar por Marca e Modelo (Specification)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?marca=mercedes&modelo=classe",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "marca",
+                  "value": "mercedes",
+                  "description": "Busca parcial case-insensitive por marca"
+                },
+                {
+                  "key": "modelo",
+                  "value": "classe",
+                  "description": "Busca parcial case-insensitive por modelo"
+                }
+              ]
+            },
+            "description": "Filtro dinâmico via Spring Data JPA Specification com busca textual parcial."
+          },
+          "response": []
+        },
+        {
+          "name": "1.9 Filtrar por Status Ativo (Specification)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?ativo=true",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "ativo",
+                  "value": "true",
+                  "description": "Filtrar por veículos ativos para venda"
+                }
+              ]
+            },
+            "description": "Filtro dinâmico pelo status ativo/inativo do veículo."
+          },
+          "response": []
+        },
+        {
+          "name": "1.10 Filtrar por Range de Quilometragem (Specification)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros?minQuilometragem=10000&maxQuilometragem=60000",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"],
+              "query": [
+                {
+                  "key": "minQuilometragem",
+                  "value": "10000",
+                  "description": "Quilometragem mínima"
+                },
+                {
+                  "key": "maxQuilometragem",
+                  "value": "60000",
+                  "description": "Quilometragem máxima"
+                }
+              ]
+            },
+            "description": "Filtra veículos por intervalo de quilometragem (seminovos, pouco rodados, etc.)."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Buscar Carro por ID (HATEOAS)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1"]
+            },
+            "description": "Busca os detalhes de um veículo específico por ID, retornando quilometragem, zeroKm e links hipermídia HATEOAS (_links: self, foto, carros, inativar/ativar)."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Cadastrar Carro (Mockup Ferrari SF90 Stradale)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"marca\": \"Ferrari\",\n  \"modelo\": \"SF90 Stradale\",\n  \"ano\": 2023,\n  \"compra\": 5800000.00,\n  \"quilometragem\": 1200\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/carros",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros"]
+            },
+            "description": "Cadastra um novo veículo no estoque. Mockup configurado com todos os campos preenchidos para uma Ferrari SF90 Stradale."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Atualizar Carro",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Chevette SL\",\n  \"ano\": 1989,\n  \"compra\": 18000.00,\n  \"quilometragem\": 190000\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/carros/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1"]
+            },
+            "description": "Atualiza os dados de um veículo existente, incluindo quilometragem."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Ativar Carro",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/carros/1/ativo",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1", "ativo"]
+            },
+            "description": "Ativa o veículo no estoque da concessionária."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Inativar Carro",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros/1/ativo",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1", "ativo"]
+            },
+            "description": "Inativa o veículo sem deletá-lo do banco."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Excluir Carro",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros/14",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "14"]
+            },
+            "description": "Remove fisicamente um veículo do banco."
+          },
+          "response": []
+        },
+        {
+          "name": "8. Upload Foto do Carro (Multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "arquivo",
+                  "type": "file",
+                  "src": []
+                },
+                {
+                  "key": "descricao",
+                  "value": "Foto da frente do veículo em alta resolução",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:8080/carros/1/foto",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1", "foto"]
+            },
+            "description": "Envia ou substitui a foto do veículo via upload multipart/form-data."
+          },
+          "response": []
+        },
+        {
+          "name": "9. Buscar Metadados da Foto (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/carros/1/foto",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1", "foto"]
+            },
+            "description": "Retorna os metadados JSON da foto do carro (nomeArquivo, tamanho, contentType, links HATEOAS)."
+          },
+          "response": []
+        },
+        {
+          "name": "10. Baixar/Exibir Imagem do Carro",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "image/jpeg, image/png"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/carros/1/foto",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1", "foto"]
+            },
+            "description": "Retorna o arquivo binário direto da imagem (JPEG ou PNG) para renderização na tela ou download."
+          },
+          "response": []
+        },
+        {
+          "name": "11. Excluir Foto do Carro",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/carros/1/foto",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["carros", "1", "foto"]
+            },
+            "description": "Remove a foto do veículo do banco e apaga o arquivo do armazenamento em disco."
+          },
+          "response": []
+        }
+      ]
     },
     {
-      "name": "2. Buscar Carro por ID (HATEOAS)",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros/1",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros", "1"]
+      "name": "Clientes",
+      "item": [
+        {
+          "name": "1. Listar Clientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes"]
+            },
+            "description": "Retorna os clientes cadastrados com paginação default (page=0, size=10) e links HATEOAS."
+          },
+          "response": []
         },
-        "description": "Busca os detalhes de um veículo específico por ID, retornando quilometragem, zeroKm e links hipermídia HATEOAS (_links: self, carros, inativar/ativar)."
-      },
-      "response": []
+        {
+          "name": "1.1 Listar Clientes com Paginação",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/clientes?page=0&size=5",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Número da página (iniciando em 0)"
+                },
+                {
+                  "key": "size",
+                  "value": "5",
+                  "description": "Quantidade de registros por página"
+                }
+              ]
+            },
+            "description": "Retorna uma página específica da lista de clientes."
+          },
+          "response": []
+        },
+        {
+          "name": "2. Buscar Cliente por ID (HATEOAS)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/clientes/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes", "1"]
+            },
+            "description": "Busca detalhes de um cliente específico com links HATEOAS (self, clientes, inativar/ativar)."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Cadastrar Cliente (Completo com Endereço)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Roberto Albuquerque\",\n  \"cpfCnpj\": \"45678912300\",\n  \"telefone\": \"(11) 97777-6666\",\n  \"email\": \"roberto.albuquerque@email.com\",\n  \"endereco\": {\n    \"cep\": \"04538-133\",\n    \"logradouro\": \"Avenida Brigadeiro Faria Lima\",\n    \"numero\": \"3477\",\n    \"complemento\": \"Torre Norte\",\n    \"bairro\": \"Itaim Bibi\",\n    \"cidade\": \"São Paulo\",\n    \"estado\": \"SP\"\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/clientes",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes"]
+            },
+            "description": "Cadastra um novo cliente com dados pessoais e endereço completo embutido."
+          },
+          "response": []
+        },
+        {
+          "name": "4. Atualizar Cliente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Carlos Eduardo Silva\",\n  \"cpfCnpj\": \"12345678901\",\n  \"telefone\": \"(11) 98765-9999\",\n  \"email\": \"carlos.eduardo@novoprovedor.com\",\n  \"endereco\": {\n    \"cep\": \"01310-100\",\n    \"logradouro\": \"Avenida Paulista\",\n    \"numero\": \"1500\",\n    \"complemento\": \"Conjunto 81\",\n    \"bairro\": \"Bela Vista\",\n    \"cidade\": \"São Paulo\",\n    \"estado\": \"SP\"\n  }\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/clientes/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes", "1"]
+            },
+            "description": "Atualiza os dados cadastrais de um cliente existente."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Ativar Cliente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/clientes/1/ativo",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes", "1", "ativo"]
+            },
+            "description": "Ativa o cadastro do cliente."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Inativar Cliente",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/clientes/1/ativo",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes", "1", "ativo"]
+            },
+            "description": "Inativa o cadastro do cliente sem excluí-lo do banco."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Excluir Cliente",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/clientes/3",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["clientes", "3"]
+            },
+            "description": "Exclui fisicamente o cadastro de um cliente do banco."
+          },
+          "response": []
+        }
+      ]
     },
     {
-      "name": "3. Cadastrar Carro",
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"marca\": \"Toyota\",\n  \"modelo\": \"Corolla\",\n  \"ano\": 2022,\n  \"compra\": 120000.0,\n  \"quilometragem\": 25000\n}"
+      "name": "Vendas",
+      "item": [
+        {
+          "name": "1. Listar Vendas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/vendas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vendas"]
+            },
+            "description": "Lista todas as vendas realizadas com dados do veículo e do cliente comprador."
+          },
+          "response": []
         },
-        "url": {
-          "raw": "{{baseUrl}}/carros",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros"]
+        {
+          "name": "2. Buscar Venda por ID (HATEOAS)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/vendas/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vendas", "1"]
+            },
+            "description": "Busca detalhes da venda com links HATEOAS (self, vendas, carro, cliente, cancelar)."
+          },
+          "response": []
         },
-        "description": "Cadastra um novo veículo no estoque com sua respectiva quilometragem."
-      },
-      "response": []
-    },
-    {
-      "name": "4. Atualizar Carro",
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n  \"marca\": \"Chevrolet\",\n  \"modelo\": \"Chevette SL\",\n  \"ano\": 1989,\n  \"compra\": 18000.0,\n  \"quilometragem\": 190000\n}"
+        {
+          "name": "3. Realizar Venda (Carro + Cliente)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"carroId\": 1,\n  \"clienteId\": 1,\n  \"valorVenda\": 16500.00,\n  \"observacoes\": \"Venda concretizada à vista com desconto e garantia de 3 meses\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8080/vendas",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vendas"]
+            },
+            "description": "Efetua a venda de um carro ativo para um cliente ativo, inativando o veículo no estoque automaticamente."
+          },
+          "response": []
         },
-        "url": {
-          "raw": "{{baseUrl}}/carros/1",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros", "1"]
-        },
-        "description": "Atualiza os dados de um veículo existente, incluindo quilometragem."
-      },
-      "response": []
-    },
-    {
-      "name": "5. Ativar Carro",
-      "request": {
-        "method": "PUT",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json"
-          }
-        ],
-        "url": {
-          "raw": "{{baseUrl}}/carros/1/ativo",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros", "1", "ativo"]
-        },
-        "description": "Ativa o veículo no sistema."
-      },
-      "response": []
-    },
-    {
-      "name": "6. Inativar Carro",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros/1/ativo",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros", "1", "ativo"]
-        },
-        "description": "Inativa o veículo sem deletá-lo."
-      },
-      "response": []
-    },
-    {
-      "name": "7. Excluir Carro",
-      "request": {
-        "method": "DELETE",
-        "header": [],
-        "url": {
-          "raw": "{{baseUrl}}/carros/14",
-          "host": ["{{baseUrl}}"],
-          "path": ["carros", "14"]
-        },
-        "description": "Remove fisicamente um veículo do banco."
-      },
-      "response": []
+        {
+          "name": "4. Cancelar Venda",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8080/vendas/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8080",
+              "path": ["vendas", "1"]
+            },
+            "description": "Cancela o registro da venda e reativa o veículo no estoque da concessionária."
+          },
+          "response": []
+        }
+      ]
     }
   ]
 }
