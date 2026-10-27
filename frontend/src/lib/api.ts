@@ -7,12 +7,36 @@ import type {
   Filters,
   Foto,
   Page,
+  PerfilOperador,
+  PropostaComercial,
+  PropostaComercialInput,
+  SimulacaoProposta,
   Sort,
+  StatusProposta,
   Venda,
   VendaInput,
 } from '../types';
 
 export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+
+let currentPerfil: PerfilOperador = 'GERENTE';
+let currentOperadorId = 'gerente@concessionariagomez.com.br';
+
+export function setOperadorContext(perfil: PerfilOperador, operadorId?: string) {
+  currentPerfil = perfil;
+  currentOperadorId =
+    operadorId ||
+    (perfil === 'VENDEDOR'
+      ? 'vendedor@concessionariagomez.com.br'
+      : perfil === 'ADMIN'
+        ? 'admin@concessionariagomez.com.br'
+        : 'gerente@concessionariagomez.com.br');
+}
+
+export function getOperadorContext() {
+  return { perfil: currentPerfil, operadorId: currentOperadorId };
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -29,6 +53,12 @@ export function errorMessage(error: unknown) {
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
+  if (!headers.has('X-Operador-Perfil')) {
+    headers.set('X-Operador-Perfil', currentPerfil);
+  }
+  if (!headers.has('X-Operador-Id')) {
+    headers.set('X-Operador-Id', currentOperadorId);
+  }
   if (init.body && !(init.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
   let response: Response;
@@ -51,7 +81,7 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
     const fields = Object.fromEntries(
       (problem?.objects ?? [])
         .filter((f: { name?: string }) => f.name)
-        .map((f: { name: string; userMessage: string }) => [f.name, f.userMessage]),
+        .map((f: { name: string; userMessage: string }) => [f.name, userMessageOrDefault(f.userMessage)]),
     );
     throw new ApiError(
       problem?.userMessage ||
@@ -67,6 +97,10 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   }
   if (response.status === 204) return undefined as T;
   return response.json();
+}
+
+function userMessageOrDefault(msg?: string) {
+  return msg || 'Campo inválido.';
 }
 
 export function carroQuery(filters: Filters, page: number, sort: Sort) {
@@ -118,8 +152,59 @@ export const api = {
     }),
   vendas: (page: number, signal?: AbortSignal) =>
     request<Page<Venda>>(`/vendas?page=${page}&size=10&sort=id,desc`, { signal }),
-  saveVenda: (input: VendaInput) =>
-    request<Venda>('/vendas', { method: 'POST', body: json(input) }),
+  saveVenda: (input: VendaInput, id?: number) =>
+    request<Venda>(`/vendas${id ? `/${id}` : ''}`, {
+      method: id ? 'PUT' : 'POST',
+      body: json(input),
+    }),
+  propostas: (page: number, status?: StatusProposta | '', signal?: AbortSignal) =>
+    request<Page<PropostaComercial>>(
+      `/propostas?page=${page}&size=10&sort=id,desc${status ? `&status=${status}` : ''}`,
+      { signal },
+    ),
+  propostasPorCliente: (clienteId: number, signal?: AbortSignal) =>
+    request<Page<PropostaComercial>>(
+      `/propostas?page=0&size=50&sort=id,desc&clienteId=${clienteId}`,
+      { signal },
+    ),
+  propostasPorCarro: (carroId: number, signal?: AbortSignal) =>
+    request<Page<PropostaComercial>>(
+      `/propostas?page=0&size=50&sort=id,desc&carroId=${carroId}`,
+      { signal },
+    ),
+  simularProposta: (input: PropostaComercialInput, signal?: AbortSignal) =>
+    request<SimulacaoProposta>('/propostas/simulacoes', {
+      method: 'POST',
+      body: json(input),
+      signal,
+    }),
+  criarProposta: (input: PropostaComercialInput) =>
+    request<PropostaComercial>('/propostas', {
+      method: 'POST',
+      body: json(input),
+    }),
+  criarRevisaoProposta: (propostaId: number, input: PropostaComercialInput) =>
+    request<PropostaComercial>(`/propostas/${propostaId}/revisoes`, {
+      method: 'POST',
+      body: json(input),
+    }),
+  decidirAprovacaoProposta: (
+    propostaId: number,
+    sequenciaRevisao: number,
+    aprovar: boolean,
+    motivo: string,
+    operadorOverrideId?: string,
+  ) =>
+    request<PropostaComercial>(`/propostas/${propostaId}/aprovacoes`, {
+      method: 'POST',
+      headers: operadorOverrideId ? { 'X-Operador-Id': operadorOverrideId } : undefined,
+      body: json({ sequenciaRevisao, aprovar, motivo }),
+    }),
+  converterPropostaEmVenda: (propostaId: number, sequenciaRevisao: number) =>
+    request<Venda>(
+      `/propostas/${propostaId}/converter-venda?sequenciaRevisao=${sequenciaRevisao}`,
+      { method: 'POST' },
+    ),
   async fotos(carroId: number, signal?: AbortSignal): Promise<Foto[]> {
     const [principal, galeria] = await Promise.all([
       request<Foto>(`/carros/${carroId}/foto`, { signal }).catch((error) => {
@@ -148,7 +233,7 @@ export function photoUrl(carroId: number, foto?: Foto, revision = 0) {
   return `${API_BASE}/carros/${carroId}/${foto?.id ? `fotos/${foto.id}/conteudo` : 'foto'}?v=${revision}`;
 }
 export async function allPages<T>(
-  collection: 'carros' | 'clientes',
+  collection: 'carros' | 'clientes' | 'vendas',
   signal?: AbortSignal,
 ): Promise<T[]> {
   let page = 0;

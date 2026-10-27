@@ -7,10 +7,13 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface VendaRepository extends JpaRepository<Venda, Long>, JpaSpecificationExecutor<Venda> {
 
     @Query("from Venda v join fetch v.carro join fetch v.cliente")
     List<Venda> findAllComRelacionamentos();
+
+    Optional<Venda> findByRevisaoConvertidaId(Long revisaoConvertidaId);
 }

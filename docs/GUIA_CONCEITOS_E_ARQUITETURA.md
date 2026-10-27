@@ -11,6 +11,7 @@ Este documento foi elaborado para servir como material de consulta permanente e 
 4. [Testes de Integração com REST-Assured e a Classe CadastroCarroIT](#4-testes-de-integração-com-rest-assured-e-a-classe-cadastrocarroit)
 5. [Precisão Financeira: Por que BigDecimal e não Double?](#5-precisão-financeira-por-que-bigdecimal-e-não-double)
 6. [Modernização de Plataforma: Spring Boot 3, Java 21 e SpringDoc](#6-modernização-de-plataforma-spring-boot-3-java-21-e-springdoc)
+7. [DevOps, Docker e Containerização Total](#7-devops-docker-e-containerização-total)
 
 ---
 
@@ -74,15 +75,15 @@ O projeto adota uma arquitetura em camadas bem delimitada. O fluxo de dados segu
 ```mermaid
 graph LR
     subgraph Entrada [Entrada de Dados (POST / PUT)]
-        ClientIn[Cliente HTTP] -->|JSON com CarroInput| ControllerIn[CarroController]\
-        ControllerIn -->|CarroInputDisassembler| Entity[Carro - Domínio]\
+        ClientIn[Cliente HTTP] -->|JSON com CarroInput| ControllerIn[CarroController]
+        ControllerIn -->|CarroInputDisassembler| Entity[Carro - Domínio]
         Entity -->|JPA Repository| DB[(MySQL)]
     end
 
     subgraph Saida [Saída de Dados (GET)]
-        DB -->|Carro| ControllerOut[CarroController]\
-        ControllerOut -->|CarroModelAssembler| DTO[CarroModel]\
-        DTO -->|JSON Final com Venda Sugerida| ClientOut[Cliente HTTP]\
+        DB -->|Carro| ControllerOut[CarroController]
+        ControllerOut -->|CarroModelAssembler| DTO[CarroModel]
+        DTO -->|JSON Final com Venda Sugerida| ClientOut[Cliente HTTP]
     end
 ```
 
@@ -235,3 +236,14 @@ O ecossistema Java passou pela transição de especificação `javax.*` (Java EE
    - O `SpringDoc` (`springdoc-openapi-starter-webmvc-ui`) é o padrão moderno adotado pelo mercado corporativo, compatível com a especificação OpenAPI 3.
 3. **Blindagem de Atualização (`CarroInputDisassembler`):**
    - No `PUT`, foi configurado `skipNullEnabled(true)` e bloqueada a alteração da coluna `dataCompra` (`updatable = false`), prevenindo corrupção de histórico ou perda acidental de dados em atualizações parciais.
+
+---
+
+## 7. DevOps, Docker e Containerização Total
+
+A Fase 6 unificou a execução de todo o ecossistema (MySQL, API Spring Boot e Frontend SPA Nginx) em containers Docker orquestrados.
+
+> [!TIP]
+> **Guia Completo e Cheat Sheet de Comandos:**  
+> Para consultar a lista completa de comandos rápidos, explicação de flags (`-d`, `--build`, `-v`), URLs de acesso e resolução de problemas, consulte o documento dedicado:  
+> 👉 [docs/GUIA_DEVOPS_E_DOCKER.md](file:///C:/Projetos/concessionaria/docs/GUIA_DEVOPS_E_DOCKER.md).

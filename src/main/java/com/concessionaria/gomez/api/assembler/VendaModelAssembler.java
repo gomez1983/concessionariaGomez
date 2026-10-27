@@ -46,8 +46,9 @@ public class VendaModelAssembler {
             vendaModel.add(linkTo(methodOn(ClienteController.class).buscar(venda.getCliente().getId())).withRel("cliente"));
         }
 
-        // HATEOAS: Ação para cancelamento da venda
+        // HATEOAS: Ação para edição da venda
         if (venda.getId() != null) {
+            vendaModel.add(linkTo(VendaController.class).slash(venda.getId()).withRel("editar"));
             vendaModel.add(linkTo(VendaController.class).slash(venda.getId()).withRel("cancelar"));
         }
 

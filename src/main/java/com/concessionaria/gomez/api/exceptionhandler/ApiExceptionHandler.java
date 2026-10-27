@@ -1,5 +1,7 @@
 package com.concessionaria.gomez.api.exceptionhandler;
 
+import com.concessionaria.gomez.domain.exception.AcessoComercialNegadoException;
+import com.concessionaria.gomez.domain.exception.ConflitoNegociacaoException;
 import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
 import com.concessionaria.gomez.domain.exception.EntidadeNaoEncontradaException;
 import com.concessionaria.gomez.domain.exception.NegocioException;
@@ -10,6 +12,7 @@ import org.springframework.beans.TypeMismatchException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -207,6 +210,36 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         HttpStatus status = HttpStatus.CONFLICT;
         ProblemType problemType = ProblemType.ENTIDADE_EM_USO;
         String detail = ex.getMessage();
+
+        Problem problem = createProblemBuilder(status, problemType, detail)
+                .userMessage(detail)
+                .build();
+
+        return handleExceptionInternal(ex, problem, new HttpHeaders(), status, request);
+    }
+
+    @ExceptionHandler(AcessoComercialNegadoException.class)
+    public ResponseEntity<?> handleAcessoComercialNegado(AcessoComercialNegadoException ex, WebRequest request) {
+
+        HttpStatus status = HttpStatus.FORBIDDEN;
+        ProblemType problemType = ProblemType.ACESSO_NEGADO;
+        String detail = ex.getMessage();
+
+        Problem problem = createProblemBuilder(status, problemType, detail)
+                .userMessage(detail)
+                .build();
+
+        return handleExceptionInternal(ex, problem, new HttpHeaders(), status, request);
+    }
+
+    @ExceptionHandler({ConflitoNegociacaoException.class, OptimisticLockingFailureException.class})
+    public ResponseEntity<?> handleConflitoNegociacao(Exception ex, WebRequest request) {
+
+        HttpStatus status = HttpStatus.CONFLICT;
+        ProblemType problemType = ProblemType.CONFLITO_NEGOCIACAO;
+        String detail = ex instanceof ConflitoNegociacaoException
+                ? ex.getMessage()
+                : "A proposta ou o veículo foi atualizado simultaneamente por outro usuário. Recarregue os dados e tente novamente.";
 
         Problem problem = createProblemBuilder(status, problemType, detail)
                 .userMessage(detail)

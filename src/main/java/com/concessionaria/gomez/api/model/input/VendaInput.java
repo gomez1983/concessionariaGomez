@@ -24,4 +24,8 @@ public class VendaInput {
 
     @Size(max = 255, message = "As observações devem ter no máximo 255 caracteres")
     private String observacoes;
+
+    private Long propostaId;
+
+    private Integer sequenciaRevisaoAutorizada;
 }

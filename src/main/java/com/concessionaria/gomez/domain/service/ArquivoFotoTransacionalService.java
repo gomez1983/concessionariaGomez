@@ -17,7 +17,9 @@ public class ArquivoFotoTransacionalService {
     private final FotoStorageService storage;
 
     public String armazenar(String contentType, InputStream stream) {
-        String nome = storage.gerarNomeArquivo("image/png".equals(contentType) ? "foto.png" : "foto.jpg");
+        String extensao = "image/webp".equals(contentType) ? "foto.webp"
+                : ("image/png".equals(contentType) ? "foto.png" : "foto.jpg");
+        String nome = storage.gerarNomeArquivo(extensao);
         // O nome original não participa do caminho físico.
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCompletion(int status) {

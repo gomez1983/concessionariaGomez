@@ -1,0 +1,13 @@
+package com.concessionaria.gomez.domain.model;
+
+public enum NaturezaItemFinanceiro {
+    PREPARACAO_RECONDICIONAMENTO,
+    FRETE_LOJA,
+    IMPOSTO_OPERACAO,
+    COMISSAO_VENDEDOR,
+    TAXA_RECEBIMENTO,
+    CORTESIA_LOJA,
+    SUPERAVALIACAO_TROCA,
+    BONUS_CAMPANHA_MONTADORA,
+    RECEITA_ACESSORIA_ELEGIVEL
+}

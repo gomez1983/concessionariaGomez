@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   CircleHelp,
+  FileSpreadsheet,
   Gauge,
   LayoutDashboard,
   Menu,
@@ -24,7 +25,7 @@ import {
   Search,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { api } from './lib/api';
+import { api, getOperadorContext, setOperadorContext } from './lib/api';
 import { currency } from './lib/estoque';
 import { useResource } from './lib/useResource';
 import { Button } from './components/ui/button';
@@ -32,10 +33,12 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from './compone
 import { ErrorState, Loading } from './components/Feedback';
 import { Stock } from './components/Stock';
 import { Customers } from './components/Customers';
+import { Proposals } from './components/Proposals';
 import { Sales } from './components/Sales';
 import { useTheme } from './lib/useTheme';
+import type { PerfilOperador } from './types';
 
-type Section = 'estoque' | 'overview' | 'clientes' | 'vendas';
+type Section = 'estoque' | 'overview' | 'clientes' | 'propostas' | 'vendas';
 const sections: Record<
   Section,
   { label: string; title: string; description: string; action: string; icon: LucideIcon }
@@ -43,7 +46,7 @@ const sections: Record<
   overview: {
     label: 'Visão geral',
     title: 'Uma boa visão do seu negócio.',
-    description: 'Os principais números do estoque, em um só lugar.',
+    description: 'Os principais números do estoque e do funil comercial, em um só lugar.',
     action: 'Adicionar veículo',
     icon: LayoutDashboard,
   },
@@ -60,6 +63,13 @@ const sections: Record<
     description: 'Contatos, cadastros e relacionamentos da sua concessionária.',
     action: 'Adicionar cliente',
     icon: Users,
+  },
+  propostas: {
+    label: 'Propostas',
+    title: 'Negociações estruturadas, margem protegida.',
+    description: 'Simule descontos, avalie trocas, aprove alçadas e converta propostas em vendas.',
+    action: 'Nova proposta',
+    icon: FileSpreadsheet,
   },
   vendas: {
     label: 'Vendas',
@@ -78,12 +88,18 @@ export default function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [toast, setToast] = useState('');
-  const dashboard = useResource(api.dashboard, [revision]);
+  const [perfil, setPerfil] = useState<PerfilOperador>(() => getOperadorContext().perfil);
+  const dashboard = useResource(api.dashboard, [revision, perfil]);
   const summary = dashboard.data;
   const config = sections[section];
   function changed(message?: string) {
     setRevision((value) => value + 1);
     if (message) setToast(message);
+  }
+  function handlePerfilChange(nextPerfil: PerfilOperador) {
+    setOperadorContext(nextPerfil);
+    setPerfil(nextPerfil);
+    setRevision((value) => value + 1);
   }
   function navigate(next: Section) {
     setSection(next);
@@ -151,6 +167,11 @@ export default function App() {
                 {key === 'estoque' && summary && (
                   <span className="nav-count">{summary.totalVeiculos}</span>
                 )}
+                {key === 'propostas' &&
+                  summary &&
+                  (summary.propostasPendentesAprovacao ?? 0) > 0 && (
+                    <span className="nav-count">{summary.propostasPendentesAprovacao}</span>
+                  )}
               </button>
             );
           })}
@@ -182,7 +203,7 @@ export default function App() {
           <div className="profile">
             <span className="avatar">CG</span>
             <div>
-              Concessionária Gomez<small>Painel do funcionário</small>
+              Concessionária Gomez<small>Perfil: {perfil}</small>
             </div>
             <span className="online-dot" />
           </div>
@@ -235,6 +256,30 @@ export default function App() {
             )}
           </div>
           <div className="topbar-right">
+            <label
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}
+              title="Alternar perfil operacional (Alçada Comercial)"
+            >
+              <span className="muted">Perfil:</span>
+              <select
+                aria-label="Perfil do operador comercial"
+                value={perfil}
+                onChange={(e) => handlePerfilChange(e.target.value as PerfilOperador)}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  border: '1px solid var(--border, #334155)',
+                  background: 'transparent',
+                  color: 'inherit',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                <option value="VENDEDOR">Vendedor</option>
+                <option value="GERENTE">Gerente</option>
+                <option value="ADMIN">Admin</option>
+              </select>
+            </label>
             <Button
               variant="ghost"
               size="icon"
@@ -308,8 +353,18 @@ export default function App() {
                   />
                   <Stat
                     label="Investido em ativos"
-                    value={summary ? currency(summary.valorInvestido) : '—'}
-                    description="Soma dos valores de compra"
+                    value={
+                      summary
+                        ? summary.valorInvestido != null
+                          ? currency(summary.valorInvestido)
+                          : 'Restrito'
+                        : '—'
+                    }
+                    description={
+                      summary?.valorInvestido != null
+                        ? 'Soma dos valores de compra'
+                        : 'Visível para Gerente/Admin'
+                    }
                     icon={Wallet}
                   />
                   <Stat
@@ -322,9 +377,17 @@ export default function App() {
                   <Stat
                     label="Margem prevista"
                     value={
-                      summary?.margemPrevista !== undefined ? currency(summary.margemPrevista) : '—'
+                      summary
+                        ? summary.margemPrevista != null
+                          ? currency(summary.margemPrevista)
+                          : 'Restrito'
+                        : '—'
                     }
-                    description="Projeção sobre os veículos ativos"
+                    description={
+                      summary?.margemPrevista != null
+                        ? 'Projeção sobre os veículos ativos'
+                        : 'Visível para Gerente/Admin'
+                    }
                     icon={Gauge}
                   />
                 </section>
@@ -371,17 +434,17 @@ export default function App() {
                     <span className="callout-icon">
                       <ArrowUpRight size={30} />
                     </span>
-                    <span className="eyebrow">PRÓXIMA PARADA</span>
+                    <span className="eyebrow">FUNIL COMERCIAL</span>
                     <h2>
-                      Seu próximo negócio
-                      <br />
-                      começa no estoque.
+                      {summary.propostasEmNegociacao ?? 0} em negociação ·{' '}
+                      {summary.propostasConvertidas ?? 0} convertidas
                     </h2>
                     <p>
-                      Atualize os veículos, organize a galeria de fotos e prepare cada oportunidade.
+                      Aguardando aprovação gerencial: {summary.propostasPendentesAprovacao ?? 0}.
+                      Faturamento realizado: {currency(summary.faturamentoRealizado ?? 0)}.
                     </p>
-                    <Button onClick={() => navigate('estoque')}>
-                      Explorar estoque
+                    <Button onClick={() => navigate('propostas')}>
+                      Abrir mesa de propostas
                       <ArrowUpRight size={17} />
                     </Button>
                   </div>
@@ -402,6 +465,15 @@ export default function App() {
           {section === 'clientes' && (
             <Customers
               revision={revision}
+              onChanged={changed}
+              formRequested={formRequested}
+              closeForm={() => setFormRequested(false)}
+            />
+          )}
+          {section === 'propostas' && (
+            <Proposals
+              revision={revision}
+              perfil={perfil}
               onChanged={changed}
               formRequested={formRequested}
               closeForm={() => setFormRequested(false)}
@@ -437,16 +509,16 @@ export default function App() {
           </DialogDescription>
           <div className="info-copy">
             <p>
-              Estoque, clientes e vendas são consultados e gravados na API. O banco de dados mantém
-              os cadastros, e o servidor guarda os arquivos das fotos.
+              Estoque, clientes, propostas comerciais e vendas são consultados e gravados na API. O
+              banco de dados mantém os cadastros, as revisões imutáveis e os arquivos das fotos.
             </p>
             <p>
-              Abra a galeria de um veículo para enviar vários ângulos, substituir imagens ou remover
-              fotos. A foto principal aparece no catálogo.
+              Abra a mesa de propostas para simular descontos, avaliar trocas com quitação, submeter
+              para alçada gerencial e converter em venda com reconciliação financeira completa.
             </p>
             <p>
-              O preço sugerido e os indicadores financeiros vêm do domínio Java. Filtros e paginação
-              são processados pelo backend.
+              O preço sugerido e os indicadores financeiros vêm do domínio Java. Custos e margens
+              internas são protegidos conforme o perfil selecionado (Vendedor, Gerente ou Admin).
             </p>
           </div>
           <Button onClick={() => setInfoOpen(false)}>

@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Setter
 public class FotoCarroInput {
 
-    @Schema(description = "Arquivo da foto do veículo (JPEG ou PNG)")
+    @Schema(description = "Arquivo da foto do veículo (JPEG, PNG ou WebP)")
     @NotNull(message = "O arquivo de imagem é obrigatório")
     @ImagemValida
     private MultipartFile arquivo;

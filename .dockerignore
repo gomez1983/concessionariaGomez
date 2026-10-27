@@ -1,0 +1,33 @@
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDEs
+.idea/
+.vscode/
+
+# Build & runtime artifacts
+target/
+*.log
+*.class
+
+# Frontend (construído separadamente no seu próprio contexto Docker)
+frontend/
+
+# Storage local e dados
+catalogo-fotos/
+
+# Docs, scripts e mídias
+docs/
+scripts/
+graphify-out/
+concessionaria-dashboard-ui.png
+concessionaria-postman-collection.json
+*.md
+
+# Skills, CI e configurações locais de agentes
+.agents/
+.codex/
+.gemini/
+.github/

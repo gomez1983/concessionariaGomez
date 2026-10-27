@@ -8,7 +8,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = ImagemValidator.class)
 public @interface ImagemValida {
-    String message() default "Envie uma imagem JPEG ou PNG válida de até 10 MB e 40 megapixels.";
+    String message() default "Envie uma imagem JPEG, PNG ou WebP válida de até 10 MB e 40 megapixels.";
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

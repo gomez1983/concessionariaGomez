@@ -6,6 +6,7 @@ import org.springframework.hateoas.RepresentationModel;
 import org.springframework.hateoas.server.core.Relation;
 
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 
 @Relation(collectionRelation = "carros")
 @Getter
@@ -18,8 +19,14 @@ public class CarroModel extends RepresentationModel<CarroModel> {
     private Integer ano;
     private BigDecimal compra;
     private BigDecimal venda;
+    private BigDecimal precoAnunciado;
     private Integer quilometragem;
     private Boolean zeroKm;
     private Boolean ativo;
+    private String disponibilidadeComercial;
+    private OffsetDateTime reservaValidaAte;
+    private String reservaResponsavel;
+    private OffsetDateTime dataCompra;
+    private Long diasEmEstoque;
 
 }

@@ -71,7 +71,7 @@ public class CarroFotoController {
         return fotoCarroModelAssembler.toModel(foto);
     }
 
-    @GetMapping(produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE, MediaType.APPLICATION_OCTET_STREAM_VALUE})
+    @GetMapping(produces = {MediaType.IMAGE_JPEG_VALUE, MediaType.IMAGE_PNG_VALUE, "image/webp", MediaType.APPLICATION_OCTET_STREAM_VALUE})
     @Operation(summary = "Serve diretamente o arquivo de imagem do veículo para exibição")
     public ResponseEntity<InputStreamResource> servirFoto(@PathVariable Long carroId) {
         try {

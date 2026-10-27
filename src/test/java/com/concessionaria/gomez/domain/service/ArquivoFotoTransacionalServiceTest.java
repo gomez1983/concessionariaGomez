@@ -29,4 +29,13 @@ class ArquivoFotoTransacionalServiceTest {
         TransactionSynchronizationManager.getSynchronizations().forEach(sync -> sync.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
         verify(storage).remover("antigo.png"); verify(storage, never()).remover("novo.png");
     }
+    @Test void deveGerarExtensaoWebpAoArmazenarImagemWebp() {
+        when(storage.gerarNomeArquivo("foto.webp")).thenReturn("uuid_foto.webp");
+        service.armazenar("image/webp", new ByteArrayInputStream(new byte[0]));
+        verify(storage).gerarNomeArquivo("foto.webp");
+        verify(storage).armazenar(argThat(novaFoto ->
+                "uuid_foto.webp".equals(novaFoto.getNomeArquivo()) &&
+                "image/webp".equals(novaFoto.getContentType())
+        ));
+    }
 }

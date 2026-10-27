@@ -68,12 +68,12 @@ export function VehicleGallery({
     if (
       list.some(
         (file) =>
-          !['image/jpeg', 'image/png'].includes(file.type) ||
+          !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
           file.size === 0 ||
           file.size > 10 * 1024 * 1024,
       )
     ) {
-      setError(new Error('Selecione apenas imagens JPEG ou PNG de até 10 MB cada.'));
+      setError(new Error('Selecione apenas imagens JPEG, PNG ou WebP de até 10 MB cada.'));
       return;
     }
     const selected: PendingFile[] = [];
@@ -144,7 +144,7 @@ export function VehicleGallery({
               {vehicle.marca} {vehicle.modelo}
             </DialogTitle>
             <DialogDescription className="muted">
-              Fotos externas, internas e detalhes. JPEG ou PNG · até 10 MB por imagem.
+              Fotos externas, internas e detalhes. JPEG, PNG ou WebP · até 10 MB por imagem.
             </DialogDescription>
           </div>
           <Camera size={28} />
@@ -195,7 +195,7 @@ export function VehicleGallery({
                       <input
                         aria-label="Substituir foto selecionada"
                         type="file"
-                        accept="image/jpeg,image/png"
+                        accept="image/jpeg,image/png,image/webp"
                         disabled={uploading}
                         onChange={(event) => {
                           void selectFiles(event.target.files, photo);
@@ -290,7 +290,7 @@ export function VehicleGallery({
                 type="file"
                 aria-label="Adicionar fotos do veículo"
                 multiple
-                accept="image/jpeg,image/png"
+                accept="image/jpeg,image/png,image/webp"
                 disabled={uploading}
                 onChange={(event) => {
                   void selectFiles(event.target.files);

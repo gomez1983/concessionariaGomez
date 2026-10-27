@@ -10,7 +10,7 @@ Documento criado em **13/09/2026** consolidando o diagnóstico atual da aplicaç
 - [x] **Framework:** Spring Boot 3.3.4 com Maven e Java 21 nativo.
 - [x] **Documentação da API:** OpenAPI 3 / Swagger UI moderno via SpringDoc em `/swagger-ui/index.html`.
 - [x] **Banco & Migrations:** Flyway gerenciando scripts com carga de testes automática (`afterMigrate.sql`).
-- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo de Carros, Clientes, Vendas e Fotos, paginação, ordenação, Specifications, HATEOAS e suite de 46 testes unitários/integrados.
+- [x] **Testes de API:** Coleção Postman validada (`concessionaria-postman-collection.json`) com fluxo CRUD completo de Carros, Clientes, Vendas e Fotos, paginação, ordenação, Specifications, HATEOAS e suite de 71 testes unitários + testes integrados.
 - [x] **Auditoria de Segurança:** Skill automatizada integrada (`.agents/skills/security-audit/`).
 
 ---
@@ -24,6 +24,7 @@ graph TD
     C --> D[Fase 4: Expansão do Domínio de Negócio]
     D --> E[Fase 5: Frontend Moderno SPA]
     E --> F[Fase 6: DevOps e Containerização Total]
+    F --> G[Fase 7: Propostas Comerciais e Negociação Assistida]
 ```
 
 ---
@@ -136,9 +137,10 @@ graph TD
       - Impede venda para clientes inativos.
       - **Inativação automática do veículo no estoque** ao concretizar a venda.
       - Cancelamento de venda com reativação automática do veículo no estoque.
+      - **Edição de negociação concluída (`PUT /vendas/{id}`):** permite alterar valor negociado, observações, cliente e veículo (com reativação automática do carro anterior e inativação do novo).
     - DTOs [`VendaInput`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/input/VendaInput.java), [`VendaModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/VendaModel.java), [`CarroResumoModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/CarroResumoModel.java) e [`ClienteResumoModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/ClienteResumoModel.java).
-    - [`VendaModelAssembler`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/assembler/VendaModelAssembler.java) com links HATEOAS (`self`, `vendas`, `carro`, `cliente`, `cancelar`).
-    - [`VendaController`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/controller/VendaController.java) com listagem paginada, busca individual, emissão e cancelamento.
+    - [`VendaModelAssembler`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/assembler/VendaModelAssembler.java) com links HATEOAS (`self`, `vendas`, `carro`, `cliente`, `editar`, `cancelar`).
+    - [`VendaController`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/controller/VendaController.java) com listagem paginada, busca individual, emissão, edição (`PUT /vendas/{id}`) e cancelamento.
 - [x] **Upload e Armazenamento de Fotos do Veículo:**
   - **O que foi feito:**
     - Migration Flyway `V008__cria-tabela-foto-carro.sql` vinculada à chave primária do carro.
@@ -193,13 +195,45 @@ graph TD
 - [x] Fotos encapsuladas nos cards e visualização proporcional na galeria.
 
 ---
-### 🔹 Fase 6: DevOps & Containerização Completa
-- [ ] **Dockerfile Multi-Stage para o Spring Boot:**
-  - Criação do `Dockerfile` otimizado para compilar e empacotar a aplicação em imagem leve (Alpine/Distroless).
-- [ ] **Docker Compose Unificado:**
-  - Expandir o `docker-compose.yml` para subir a aplicação Java + Frontend + MySQL juntos em um único comando `docker compose up -d` faz tudo.
-- [ ] **CI/CD Básico (GitHub Actions):**
-  - Pipeline automático para compilar, rodar testes e verificar qualidade a cada push.
+### 🔹 Fase 6: DevOps & Containerização Completa (100% Concluída)
+- [x] **Dockerfile Multi-Stage para o Spring Boot:**
+  - Criação do [`Dockerfile`](file:///C:/Projetos/concessionaria/Dockerfile) otimizado em dois estágios (`maven:3.9.9-eclipse-temurin-21-alpine` para build com cache de dependências e `eclipse-temurin:21-jre-alpine` para execução leve).
+  - Execução segura com usuário não-root (`appuser`), diretório persistente `/app/catalogo-fotos` com permissões dedicadas e flags de JVM otimizadas para containers (`-XX:+UseG1GC -XX:MaxRAMPercentage=75.0`).
+  - Arquivo [`.dockerignore`](file:///C:/Projetos/concessionaria/.dockerignore) configurado para isolar o contexto de build (excluindo `target/`, `frontend/`, `catalogo-fotos/`, `graphify-out/`, `docs/` e metadados de agentes/IDEs).
+- [x] **Docker Compose Unificado:**
+  - Orquestração completa em [`docker-compose.yml`](file:///C:/Projetos/concessionaria/docker-compose.yml) subindo MySQL 8.0 (`3307:3306`), API Spring Boot (`8080:8080`) e Frontend React/Nginx (`80:80`) com `docker compose up -d`.
+  - Healthcheck automático no MySQL garantindo inicialização ordenada (`condition: service_healthy`) antes da subida do backend e persistência de dados via volume `mysql_data` e bind mount `./catalogo-fotos:/app/catalogo-fotos`.
+  - Containerização do frontend em [`frontend/Dockerfile`](file:///C:/Projetos/concessionaria/frontend/Dockerfile) (Node 22 Alpine + Nginx Alpine) e proxy reverso em [`frontend/nginx.conf`](file:///C:/Projetos/concessionaria/frontend/nginx.conf) roteando `/api/`, `/swagger-ui/` e `/v3/api-docs` diretamente para `backend:8080` com suporte a upload de até 15 MB.
+- [x] **CI/CD Básico (GitHub Actions):**
+  - Pipeline automatizado em [`.github/workflows/ci.yml`](file:///C:/Projetos/concessionaria/.github/workflows/ci.yml) acionado em `push` e `pull_request` para `main`/`master`.
+  - Job **Backend (Java 21 & Spring Boot):** provisiona container de serviço `mysql:8.0` com healthcheck TCP, configura JDK 21 (Temurin) com cache Maven e executa `mvn clean verify -B` (testes unitários e integrados).
+  - Job **Frontend (React, Vite & Vitest):** configura Node.js 22 com cache npm e valida `npm ci`, `npm test` (Vitest) e `npm run build` (TypeScript + Vite).
+
+---
+
+### 🔹 Fase 7: Propostas Comerciais e Negociação Assistida (100% Concluída)
+> 📄 **Especificação Técnica Completa:** [`docs/FASE_7_PROPOSTAS_E_NEGOCIACAO.md`](file:///C:/Projetos/concessionaria/docs/FASE_7_PROPOSTAS_E_NEGOCIACAO.md)
+
+- [x] **Etapa 7.0 e 7.2 — Política Comercial e Motor Financeiro:**
+  - Política versionada por contexto comercial (`LOJA_PADRAO` e `EXCECAO_VEICULO`) em [`PoliticaComercial`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/PoliticaComercial.java) com vigência, responsável, validação de invariantes (`margemDesejada >= margemAutonomia >= margemPisoAbsoluto`) e precedência explícita.
+  - Motor financeiro comercial em [`MotorFinanceiroComercialService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/MotorFinanceiroComercialService.java) implementando cálculo de contribuição estimada (`P - C - F - (t * P) + B`), piso matemático (`(C + F - B) / (1 - t - m)`) arredondado para cima (`RoundingMode.CEILING`), validação de denominador (`1 - t - m > 0`), aplicação da regra mais restritiva de desconto e detecção de custos pendentes.
+  - Suíte de testes unitários em [`MotorFinanceiroComercialServiceTest`](file:///C:/Projetos/concessionaria/src/test/java/com/concessionaria/gomez/domain/service/MotorFinanceiroComercialServiceTest.java) validando todos os cenários de homologação, precisão interna de centavos e regras de alçada.
+- [x] **Etapa 7.1 — Modelo de Dados e Migrations Incrementais:**
+  - Migration Flyway [`V010__cria-estrutura-propostas-e-politica-comercial.sql`](file:///C:/Projetos/concessionaria/src/main/resources/db/migration/V010__cria-estrutura-propostas-e-politica-comercial.sql) com FKs, índices e constraints de unicidade (`proposta_id + sequencia` e `revisao_convertida_id`).
+  - Entidades de domínio implementadas: [`PropostaComercial`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/PropostaComercial.java), [`RevisaoProposta`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/RevisaoProposta.java) (imutável após submissão), [`ItemFinanceiroRevisao`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/ItemFinanceiroRevisao.java), [`CustoVeiculo`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/CustoVeiculo.java), [`PagamentoProposta`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/PagamentoProposta.java), [`FinanciamentoProposta`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/FinanciamentoProposta.java), [`AvaliacaoTroca`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/AvaliacaoTroca.java), [`CampanhaComercial`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/CampanhaComercial.java) e [`DecisaoAprovacao`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/DecisaoAprovacao.java).
+  - Separação entre [`DisponibilidadeComercial`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/DisponibilidadeComercial.java) (`DISPONIVEL`, `RESERVADO`, `VENDIDO`) e ativação cadastral em [`Carro`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/Carro.java), além de vínculo opcional `revisaoConvertida` e flag `origemLegada` em [`Venda`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/Venda.java).
+- [x] **Etapa 7.3 — Ciclo de Vida da Proposta, Alçadas de Aprovação e API:**
+  - Orquestração completa em [`GestaoPropostaComercialService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/GestaoPropostaComercialService.java) com máquina de estados (`RASCUNHO -> EM_NEGOCIACAO -> PENDENTE_APROVACAO -> APROVADA -> CONVERTIDA`), liberação automática dentro da autonomia, fila gerencial com bloqueio de autoaprovação (`403`) e verificação de concorrência de revisão (`409`).
+  - Endpoints RESTful com OpenAPI e HATEOAS em [`PropostaComercialController`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/controller/PropostaComercialController.java) (`/propostas`, `/propostas/simulacoes`, `/propostas/{id}/revisoes`, `/propostas/{id}/aprovacoes`, `/propostas/{id}/reservas`, `/propostas/{id}/converter-venda`, `/propostas/politicas`) e ocultação de custos/margens internas no JSON para o perfil `VENDEDOR`.
+- [x] **Etapa 7.4 — Frontend (Atendimento, Simulação e Fila Gerencial):**
+  - Menu **Propostas** em [`Proposals.tsx`](file:///C:/Projetos/concessionaria/frontend/src/components/Proposals.tsx) e integração em [`App.tsx`](file:///C:/Projetos/concessionaria/frontend/src/App.tsx) com seletor de perfil operacional (`VENDEDOR`, `GERENTE`, `ADMIN`), listagem paginada, filtros de situação e simulação em tempo real com debounce e `AbortController`.
+  - Indicadores visuais e textuais de alçada, fila gerencial de decisões e modal de resumo comercial para o cliente sem exposição de custos ou margens internas.
+- [x] **Etapa 7.5 — Usado na Troca, Financiamento e Campanhas:**
+  - Avaliação de veículo usado separando valor técnico, valor comercial aceito, saldo de quitação verificado e crédito líquido na troca, contabilizando eventual superavaliação suportada pela loja como concessão econômica na revisão e incorporando o usado ao estoque apenas no fechamento efetivo.
+  - Suporte a composição de pagamentos reconciliada, financiamento (principal, entrada, prazo, taxa, CET) e campanhas comerciais parametrizadas.
+- [x] **Etapas 7.6 e 7.7 — Fechamento de Vendas, Indicadores e Homologação:**
+  - Conversão idempotente e transacional de revisão autorizada em [`Venda`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/Venda.java) com valores congelados, integração com `POST /vendas` e cancelamento auditado (`POST /vendas/{id}/cancelamento-auditado`) em [`EmissaoVendaService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/EmissaoVendaService.java).
+  - Evolução dos indicadores em [`ResumoEstoqueService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/ResumoEstoqueService.java) e [`DashboardModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/DashboardModel.java), além de suíte de testes unitários em [`GestaoPropostaComercialServiceTest`](file:///C:/Projetos/concessionaria/src/test/java/com/concessionaria/gomez/domain/service/GestaoPropostaComercialServiceTest.java).
 
 ---
 

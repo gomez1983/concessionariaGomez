@@ -10,6 +10,42 @@ services:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcatita01"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: concessionaria-backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/concessionaria?createDatabaseIfNotExist=true&serverTimezone=UTC
+      DB_USERNAME: root
+      DB_PASSWORD: catita01
+      CONCESSIONARIA_STORAGE_LOCAL_DIRETORIO_FOTOS: /app/catalogo-fotos
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./catalogo-fotos:/app/catalogo-fotos
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: concessionaria-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
 
 volumes:
   mysql_data:

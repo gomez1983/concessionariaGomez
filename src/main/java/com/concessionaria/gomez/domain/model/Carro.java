@@ -8,6 +8,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 
 @Data
@@ -35,10 +36,23 @@ public class Carro {
     @Column(nullable = false)
     private BigDecimal compra;
 
+    @Column(name = "preco_anunciado", precision = 12, scale = 2)
+    private BigDecimal precoAnunciado;
+
     @Column(nullable = false)
     private Integer quilometragem = 0;
 
     private Boolean ativo = Boolean.TRUE;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "disponibilidade_comercial", nullable = false, length = 20)
+    private DisponibilidadeComercial disponibilidadeComercial = DisponibilidadeComercial.DISPONIVEL;
+
+    @Column(name = "reserva_valida_ate", columnDefinition = "datetime")
+    private OffsetDateTime reservaValidaAte;
+
+    @Column(name = "reserva_responsavel", length = 100)
+    private String reservaResponsavel;
 
     @CreationTimestamp
     @Column(name = "datacompra", nullable = false, columnDefinition = "datetime", updatable = false)
@@ -46,10 +60,20 @@ public class Carro {
 
     public void ativar() {
         setAtivo(true);
+        if (this.disponibilidadeComercial == DisponibilidadeComercial.VENDIDO) {
+            this.disponibilidadeComercial = DisponibilidadeComercial.DISPONIVEL;
+        }
     }
 
     public void inativar() {
         setAtivo(false);
+    }
+
+    public void marcarComoVendido() {
+        setAtivo(false);
+        this.disponibilidadeComercial = DisponibilidadeComercial.VENDIDO;
+        this.reservaValidaAte = null;
+        this.reservaResponsavel = null;
     }
 
     public boolean isZeroKm() {
@@ -69,6 +93,20 @@ public class Carro {
         }
         BigDecimal multiplicador = BigDecimal.ONE.add(percentualMargem);
         return this.compra.multiply(multiplicador).setScale(2, RoundingMode.HALF_UP);
+    }
+
+    public BigDecimal obterPrecoAnunciadoEfetivo() {
+        if (this.precoAnunciado != null) {
+            return this.precoAnunciado.setScale(2, RoundingMode.HALF_UP);
+        }
+        return calcularPrecoVendaSugerido();
+    }
+
+    public long calcularDiasEmEstoque(OffsetDateTime referencia) {
+        if (this.dataCompra == null || referencia == null || referencia.isBefore(this.dataCompra)) {
+            return 0L;
+        }
+        return Duration.between(this.dataCompra, referencia).toDays();
     }
 
     @Transient

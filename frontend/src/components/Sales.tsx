@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { Banknote, Undo2 } from 'lucide-react';
-import type { Carro, Cliente, VendaInput } from '../types';
+import { Banknote, Pencil, Undo2 } from 'lucide-react';
+import type { Carro, Cliente, Venda, VendaInput } from '../types';
 import { allPages, api } from '../lib/api';
 import { currency } from '../lib/estoque';
 import { useResource } from '../lib/useResource';
@@ -25,6 +25,7 @@ export function Sales({
   closeForm: () => void;
 }) {
   const [page, setPage] = useState(0);
+  const [editingVenda, setEditingVenda] = useState<Venda | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const resource = useResource((signal) => api.vendas(page, signal), [page, revision]);
   return (
@@ -82,25 +83,35 @@ export function Sales({
                       )}
                     </td>
                     <td>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setConfirmation({
-                            title: 'Cancelar esta venda?',
-                            description: `A venda de ${venda.carro.marca} ${venda.carro.modelo} para ${venda.cliente.nome} será cancelada. O backend reativará o veículo no estoque.`,
-                            label: 'Cancelar venda',
-                            action: async () => {
-                              await api.remove('vendas', venda.id);
-                              setPage(0);
-                              onChanged('Venda cancelada. Veículo reativado no estoque.');
-                            },
-                          })
-                        }
-                      >
-                        <Undo2 size={14} />
-                        Cancelar
-                      </Button>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingVenda(venda)}
+                        >
+                          <Pencil size={14} />
+                          Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setConfirmation({
+                              title: 'Cancelar esta venda?',
+                              description: `A venda de ${venda.carro.marca} ${venda.carro.modelo} para ${venda.cliente.nome} será cancelada. O backend reativará o veículo no estoque.`,
+                              label: 'Cancelar venda',
+                              action: async () => {
+                                await api.remove('vendas', venda.id);
+                                setPage(0);
+                                onChanged('Venda cancelada. Veículo reativado no estoque.');
+                              },
+                            })
+                          }
+                        >
+                          <Undo2 size={14} />
+                          Cancelar
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -117,14 +128,19 @@ export function Sales({
           />
         )}
       </section>
-      {formRequested && (
+      {(formRequested || editingVenda) && (
         <SaleForm
-          onClose={closeForm}
-          onSave={async (input) => {
-            await api.saveVenda(input);
-            closeForm();
-            setPage(0);
-            onChanged('Venda registrada. Veículo inativado no estoque.');
+          venda={editingVenda ?? undefined}
+          onClose={() => {
+            if (formRequested) closeForm();
+            if (editingVenda) setEditingVenda(null);
+          }}
+          onSave={async (input, id) => {
+            await api.saveVenda(input, id);
+            if (formRequested) closeForm();
+            if (editingVenda) setEditingVenda(null);
+            resource.reload();
+            onChanged(id ? 'Venda atualizada com sucesso.' : 'Venda registrada. Veículo inativado no estoque.');
           }}
         />
       )}
@@ -137,21 +153,52 @@ export function Sales({
 function SaleForm({
   onClose,
   onSave,
+  venda,
 }: {
   onClose: () => void;
-  onSave: (input: VendaInput) => Promise<void>;
+  onSave: (input: VendaInput, id?: number) => Promise<void>;
+  venda?: Venda;
 }) {
   const options = useResource(async (signal) => {
     const [carros, clientes] = await Promise.all([
       allPages<Carro>('carros', signal),
       allPages<Cliente>('clientes', signal),
     ]);
-    return { carros, clientes: clientes.filter((cliente) => cliente.ativo) };
-  }, []);
-  const [carroId, setCarroId] = useState('');
+    const listCarros = [...carros];
+    if (venda && !listCarros.some((c) => c.id === venda.carro.id)) {
+      listCarros.unshift({
+        id: venda.carro.id,
+        marca: venda.carro.marca,
+        modelo: venda.carro.modelo,
+        ano: venda.carro.ano,
+        compra: 0,
+        venda: venda.valorVenda,
+        zeroKm: false,
+        quilometragem: 0,
+        ativo: false,
+      });
+    }
+    const listClientes = [...clientes.filter((cliente) => cliente.ativo)];
+    if (venda && !listClientes.some((c) => c.id === venda.cliente.id)) {
+      listClientes.unshift({
+        id: venda.cliente.id,
+        nome: venda.cliente.nome,
+        cpfCnpj: venda.cliente.cpfCnpj,
+        telefone: '',
+        email: '',
+        ativo: true,
+        endereco: null,
+        dataCadastro: '',
+      });
+    }
+    return { carros: listCarros, clientes: listClientes };
+  }, [venda?.id]);
+
+  const [carroId, setCarroId] = useState(venda ? String(venda.carro.id) : '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const selected = options.data?.carros.find((carro) => carro.id === +carroId);
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
@@ -164,18 +211,22 @@ function SaleForm({
     setBusy(true);
     setError(null);
     try {
-      await onSave({
-        carroId: +carroId,
-        clienteId: Number(data.get('clienteId')),
-        valorVenda,
-        observacoes: String(data.get('observacoes') ?? '').trim(),
-      });
+      await onSave(
+        {
+          carroId: +carroId,
+          clienteId: Number(data.get('clienteId')),
+          valorVenda,
+          observacoes: String(data.get('observacoes') ?? '').trim(),
+        },
+        venda?.id,
+      );
     } catch (error) {
       setError(error);
     } finally {
       setBusy(false);
     }
   }
+
   return (
     <Dialog
       open
@@ -187,9 +238,13 @@ function SaleForm({
         <div className="dialog-symbol">
           <Banknote size={25} />
         </div>
-        <DialogTitle className="dialog-title">Um novo negócio fechado.</DialogTitle>
+        <DialogTitle className="dialog-title">
+          {venda ? 'Editar negociação' : 'Um novo negócio fechado.'}
+        </DialogTitle>
         <DialogDescription className="muted">
-          Escolha o veículo e o cliente. A disponibilidade será validada pela API.
+          {venda
+            ? 'Atualize o veículo, cliente, valor negociado ou observações da venda.'
+            : 'Escolha o veículo e o cliente. A disponibilidade será validada pela API.'}
         </DialogDescription>
         {options.loading ? (
           <Loading />
@@ -200,7 +255,7 @@ function SaleForm({
             <fieldset disabled={busy} className="form-fieldset">
               <div className="form-grid">
                 <label className="span-two">
-                  Veículo disponível
+                  Veículo
                   <select
                     required
                     value={carroId}
@@ -210,13 +265,14 @@ function SaleForm({
                     {options.data?.carros.map((carro) => (
                       <option key={carro.id} value={carro.id}>
                         {carro.marca} {carro.modelo} · {carro.ano} · #{carro.id}
+                        {venda && carro.id === venda.carro.id ? ' (Veículo desta venda)' : ''}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="span-two">
-                  Cliente ativo
-                  <select name="clienteId" required defaultValue="">
+                  Cliente
+                  <select name="clienteId" required defaultValue={venda ? String(venda.cliente.id) : ''}>
                     <option value="">Selecione um cliente</option>
                     {options.data?.clientes.map((cliente) => (
                       <option key={cliente.id} value={cliente.id}>
@@ -227,7 +283,12 @@ function SaleForm({
                 </label>
                 <label className="span-two">
                   Valor negociado (R$)
-                  <MoneyInput name="valorVenda" required placeholder="R$ 0,00" />
+                  <MoneyInput
+                    name="valorVenda"
+                    required
+                    placeholder="R$ 0,00"
+                    defaultValue={venda?.valorVenda}
+                  />
                 </label>
                 {selected && (
                   <p className="field-hint span-two">
@@ -236,12 +297,17 @@ function SaleForm({
                 )}
                 <label className="span-two">
                   Observações
-                  <textarea name="observacoes" maxLength={255} rows={3} />
+                  <textarea
+                    name="observacoes"
+                    maxLength={255}
+                    rows={3}
+                    defaultValue={venda?.observacoes ?? ''}
+                  />
                 </label>
               </div>
               {(!options.data?.carros.length || !options.data?.clientes.length) && (
                 <p className="form-error">
-                  Cadastre um veículo e um cliente ativos para registrar uma venda.
+                  Cadastre um veículo e um cliente para registrar ou editar uma venda.
                 </p>
               )}
               <FormError error={error} />
@@ -253,7 +319,7 @@ function SaleForm({
                   type="submit"
                   disabled={!options.data?.carros.length || !options.data?.clientes.length}
                 >
-                  {busy ? 'Registrando…' : 'Registrar venda'}
+                  {busy ? 'Salvando…' : venda ? 'Salvar alterações' : 'Registrar venda'}
                 </Button>
               </div>
             </fieldset>

@@ -9,6 +9,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -28,7 +29,13 @@ public class CarroModelAssembler {
 
         CarroModel carroModel = modelMapper.map(carro, CarroModel.class);
         carroModel.setVenda(carro.calcularPrecoVendaSugerido());
+        carroModel.setPrecoAnunciado(carro.obterPrecoAnunciadoEfetivo());
         carroModel.setZeroKm(carro.isZeroKm());
+        carroModel.setDisponibilidadeComercial(
+                carro.getDisponibilidadeComercial() != null
+                        ? carro.getDisponibilidadeComercial().name()
+                        : "DISPONIVEL");
+        carroModel.setDiasEmEstoque(carro.calcularDiasEmEstoque(OffsetDateTime.now()));
 
         // HATEOAS: Link para o próprio recurso individual (self) -> GET /carros/{id}
         if (carro.getId() != null) {

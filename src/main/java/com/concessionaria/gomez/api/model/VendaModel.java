@@ -19,4 +19,7 @@ public class VendaModel extends RepresentationModel<VendaModel> {
     private BigDecimal valorVenda;
     private OffsetDateTime dataVenda;
     private String observacoes;
+    private Boolean origemLegada;
+    private Boolean cancelada;
+    private String motivoCancelamento;
 }

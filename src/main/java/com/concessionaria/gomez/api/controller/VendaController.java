@@ -6,6 +6,7 @@ import com.concessionaria.gomez.api.model.input.VendaInput;
 import com.concessionaria.gomez.domain.model.Venda;
 import com.concessionaria.gomez.domain.repository.VendaRepository;
 import com.concessionaria.gomez.domain.service.EmissaoVendaService;
+import com.concessionaria.gomez.domain.service.GestaoPropostaComercialService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -30,6 +31,9 @@ public class VendaController {
     private EmissaoVendaService emissaoVendaService;
 
     @Autowired
+    private GestaoPropostaComercialService gestaoPropostaService;
+
+    @Autowired
     private VendaModelAssembler vendaModelAssembler;
 
     @GetMapping
@@ -48,14 +52,47 @@ public class VendaController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Registra uma nova venda, associando veículo ao cliente e inativando o carro no estoque")
+    @Operation(summary = "Registra uma nova venda (por conversão de proposta autorizada ou emissão direta) e inativa o carro no estoque")
     public VendaModel realizarVenda(@RequestBody @Valid VendaInput vendaInput) {
-        Venda venda = emissaoVendaService.realizarVenda(
+        Venda venda;
+        if (vendaInput.getPropostaId() != null && gestaoPropostaService != null) {
+            venda = gestaoPropostaService.converterEmVenda(
+                    vendaInput.getPropostaId(),
+                    vendaInput.getSequenciaRevisaoAutorizada(),
+                    vendaInput.getObservacoes());
+        } else {
+            venda = emissaoVendaService.realizarVenda(
+                    vendaInput.getCarroId(),
+                    vendaInput.getClienteId(),
+                    vendaInput.getValorVenda(),
+                    vendaInput.getObservacoes()
+            );
+        }
+        return vendaModelAssembler.toModel(venda);
+    }
+
+    @PutMapping("/{vendaId}")
+    @Operation(summary = "Atualiza os dados de uma venda existente")
+    public VendaModel atualizar(@PathVariable Long vendaId, @RequestBody @Valid VendaInput vendaInput) {
+        Venda venda = emissaoVendaService.atualizar(
+                vendaId,
                 vendaInput.getCarroId(),
                 vendaInput.getClienteId(),
                 vendaInput.getValorVenda(),
                 vendaInput.getObservacoes()
         );
+        return vendaModelAssembler.toModel(venda);
+    }
+
+    @PostMapping("/{vendaId}/cancelamento-auditado")
+    @Operation(summary = "Cancela uma venda mantendo registro auditado e controlando a reativação do veículo no estoque")
+    public VendaModel cancelarAuditado(
+            @PathVariable Long vendaId,
+            @RequestParam String motivo,
+            @RequestParam(defaultValue = "true") boolean reativarVeiculo,
+            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+
+        Venda venda = emissaoVendaService.cancelarComAuditoria(vendaId, motivo, operadorId, reativarVeiculo);
         return vendaModelAssembler.toModel(venda);
     }
 

@@ -114,6 +114,70 @@ class EmissaoVendaServiceTest {
     }
 
     @Test
+    @DisplayName("Deve atualizar venda com sucesso alterando valores e observações sem trocar carro/cliente")
+    void deveAtualizarVendaComSucessoMesmoCarroECliente() {
+        Carro carro = new Carro();
+        carro.setId(1L);
+
+        Cliente cliente = new Cliente();
+        cliente.setId(10L);
+
+        Venda venda = new Venda();
+        venda.setId(50L);
+        venda.setCarro(carro);
+        venda.setCliente(cliente);
+        venda.setValorVenda(new BigDecimal("100000.00"));
+        venda.setObservacoes("Original");
+
+        when(vendaRepository.findById(50L)).thenReturn(Optional.of(venda));
+        when(vendaRepository.save(any(Venda.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Venda atualizada = emissaoVendaService.atualizar(50L, 1L, 10L, new BigDecimal("95000.00"), "Desconto final");
+
+        assertThat(atualizada.getValorVenda()).isEqualTo(new BigDecimal("95000.00"));
+        assertThat(atualizada.getObservacoes()).isEqualTo("Desconto final");
+        verify(vendaRepository).save(venda);
+        verify(cadastroCarroService, never()).salvar(any());
+    }
+
+    @Test
+    @DisplayName("Deve atualizar venda trocando veículo: reativando anterior e inativando novo")
+    void deveAtualizarVendaTrocandoVeiculo() {
+        Carro carroAntigo = new Carro();
+        carroAntigo.setId(1L);
+        carroAntigo.setAtivo(false);
+
+        Carro carroNovo = new Carro();
+        carroNovo.setId(2L);
+        carroNovo.setMarca("BMW");
+        carroNovo.setModelo("320i");
+        carroNovo.setAtivo(true);
+
+        Cliente cliente = new Cliente();
+        cliente.setId(10L);
+
+        Venda venda = new Venda();
+        venda.setId(50L);
+        venda.setCarro(carroAntigo);
+        venda.setCliente(cliente);
+        venda.setValorVenda(new BigDecimal("100000.00"));
+
+        when(vendaRepository.findById(50L)).thenReturn(Optional.of(venda));
+        when(cadastroCarroService.buscarOuFalhar(2L)).thenReturn(carroNovo);
+        when(vendaRepository.save(any(Venda.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        Venda atualizada = emissaoVendaService.atualizar(50L, 2L, 10L, new BigDecimal("180000.00"), "Troca de veículo");
+
+        assertThat(atualizada.getCarro().getId()).isEqualTo(2L);
+        assertThat(carroAntigo.getAtivo()).isTrue(); // Antigo volta ao estoque
+        assertThat(carroNovo.getAtivo()).isFalse();  // Novo sai do estoque
+
+        verify(cadastroCarroService).salvar(carroAntigo);
+        verify(cadastroCarroService).salvar(carroNovo);
+        verify(vendaRepository).save(venda);
+    }
+
+    @Test
     @DisplayName("Deve cancelar venda e reativar o veículo no estoque")
     void deveCancelarVendaEReativarVeiculo() {
         Carro carro = new Carro();

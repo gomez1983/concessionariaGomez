@@ -15,6 +15,9 @@ const brands: Record<string, [string, string]> = {
   toyota: ['toyota', '#f17c81'],
   honda: ['honda', '#ed7c7c'],
   hyundai: ['hyundai', '#79acd5'],
+  byd: ['byd', '#e05d64'],
+  bid: ['byd', '#e05d64'],
+  bugatti: ['bugatti', '#4da9ff'],
 };
 export function BrandLogo({ marca }: { marca: string }) {
   const brand = brands[marca.toLowerCase().replace(/[^a-z]/g, '')];
