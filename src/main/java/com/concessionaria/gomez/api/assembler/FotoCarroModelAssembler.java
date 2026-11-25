@@ -4,18 +4,18 @@ import com.concessionaria.gomez.api.controller.CarroController;
 import com.concessionaria.gomez.api.controller.CarroFotoController;
 import com.concessionaria.gomez.api.model.FotoCarroModel;
 import com.concessionaria.gomez.domain.model.FotoCarro;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Component
+@RequiredArgsConstructor
 public class FotoCarroModelAssembler {
 
-    @Autowired
-    private ModelMapper modelMapper;
+    private final ModelMapper modelMapper;
 
     public FotoCarroModel toModel(FotoCarro fotoCarro) {
         if (fotoCarro == null) {

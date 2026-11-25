@@ -14,8 +14,8 @@ import com.concessionaria.gomez.infrastructure.repository.spec.CarroSpecs;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -26,19 +26,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(value = "/carros")
 @Tag(name = "Carros", description = "Gerenciamento de veículos da Concessionária Gomez")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class CarroController {
 
-    @Autowired
-    private CarroRepository carroRepository;
-
-    @Autowired
-    private CadastroCarroService cadastroCarro;
-
-    @Autowired
-    private CarroModelAssembler carroModelAssembler;
-
-    @Autowired
-    private CarroInputDisassembler carroInputDisassembler;
+    private final CarroRepository carroRepository;
+    private final CadastroCarroService cadastroCarro;
+    private final CarroModelAssembler carroModelAssembler;
+    private final CarroInputDisassembler carroInputDisassembler;
 
     @GetMapping
     @Operation(summary = "Método para listar veículos (com filtros dinâmicos via Specification, paginação e ordenação)")

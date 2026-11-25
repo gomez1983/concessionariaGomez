@@ -10,8 +10,8 @@ import com.concessionaria.gomez.domain.service.GestaoPropostaComercialService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -22,19 +22,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/vendas")
 @Tag(name = "Vendas", description = "Gerenciamento e emissão de vendas de veículos")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class VendaController {
 
-    @Autowired
-    private VendaRepository vendaRepository;
-
-    @Autowired
-    private EmissaoVendaService emissaoVendaService;
-
-    @Autowired
-    private GestaoPropostaComercialService gestaoPropostaService;
-
-    @Autowired
-    private VendaModelAssembler vendaModelAssembler;
+    private final VendaRepository vendaRepository;
+    private final EmissaoVendaService emissaoVendaService;
+    private final GestaoPropostaComercialService gestaoPropostaService;
+    private final VendaModelAssembler vendaModelAssembler;
 
     @GetMapping
     @Operation(summary = "Lista todas as vendas realizadas com paginação e ordenação")

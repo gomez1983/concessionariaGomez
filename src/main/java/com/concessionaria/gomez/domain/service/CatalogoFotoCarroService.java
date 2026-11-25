@@ -3,7 +3,7 @@ package com.concessionaria.gomez.domain.service;
 import com.concessionaria.gomez.domain.exception.FotoCarroNaoEncontradaException;
 import com.concessionaria.gomez.domain.model.FotoCarro;
 import com.concessionaria.gomez.domain.repository.FotoCarroRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,13 +11,11 @@ import java.io.InputStream;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class CatalogoFotoCarroService {
 
-    @Autowired
-    private FotoCarroRepository fotoCarroRepository;
-
-    @Autowired
-    private ArquivoFotoTransacionalService arquivos;
+    private final FotoCarroRepository fotoCarroRepository;
+    private final ArquivoFotoTransacionalService arquivos;
 
     @Transactional
     public FotoCarro salvar(FotoCarro foto, InputStream dadosArquivo) {

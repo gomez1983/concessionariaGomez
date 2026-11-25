@@ -5,13 +5,14 @@ import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
 import com.concessionaria.gomez.domain.exception.NegocioException;
 import com.concessionaria.gomez.domain.model.Cliente;
 import com.concessionaria.gomez.domain.repository.ClienteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CadastroClienteService {
 
     private static final String MSG_CLIENTE_EM_USO
@@ -23,8 +24,7 @@ public class CadastroClienteService {
     private static final String MSG_CPF_CNPJ_DUPLICADO
             = "Já existe um cliente cadastrado com o CPF/CNPJ %s";
 
-    @Autowired
-    private ClienteRepository clienteRepository;
+    private final ClienteRepository clienteRepository;
 
     @Transactional
     public Cliente salvar(Cliente cliente) {

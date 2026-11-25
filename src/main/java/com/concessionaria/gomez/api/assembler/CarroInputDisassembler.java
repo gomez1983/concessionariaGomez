@@ -2,15 +2,15 @@ package com.concessionaria.gomez.api.assembler;
 
 import com.concessionaria.gomez.api.model.input.CarroInput;
 import com.concessionaria.gomez.domain.model.Carro;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class CarroInputDisassembler {
 
-    @Autowired
-    private ModelMapper modelMapper;
+    private final ModelMapper modelMapper;
 
     public Carro toDomainObject(CarroInput carroInput) {
         return modelMapper.map(carroInput, Carro.class);

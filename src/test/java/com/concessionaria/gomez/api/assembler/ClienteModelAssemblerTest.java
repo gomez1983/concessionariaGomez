@@ -9,7 +9,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.modelmapper.ModelMapper;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -27,8 +26,7 @@ class ClienteModelAssemblerTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
-        assembler = new ClienteModelAssembler();
-        ReflectionTestUtils.setField(assembler, "modelMapper", new ModelMapper());
+        assembler = new ClienteModelAssembler(new ModelMapper());
     }
 
     @AfterEach

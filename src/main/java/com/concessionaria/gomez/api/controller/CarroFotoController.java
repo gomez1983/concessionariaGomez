@@ -13,7 +13,7 @@ import com.concessionaria.gomez.domain.service.FotoStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -28,19 +28,13 @@ import java.io.IOException;
 @RequestMapping("/carros/{carroId}/foto")
 @Tag(name = "Fotos de Veículos", description = "Upload, download e gerenciamento de fotos de veículos")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class CarroFotoController {
 
-    @Autowired
-    private CadastroCarroService cadastroCarroService;
-
-    @Autowired
-    private CatalogoFotoCarroService catalogoFotoCarroService;
-
-    @Autowired
-    private FotoStorageService fotoStorageService;
-
-    @Autowired
-    private FotoCarroModelAssembler fotoCarroModelAssembler;
+    private final CadastroCarroService cadastroCarroService;
+    private final CatalogoFotoCarroService catalogoFotoCarroService;
+    private final FotoStorageService fotoStorageService;
+    private final FotoCarroModelAssembler fotoCarroModelAssembler;
 
     @PutMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Atualiza ou adiciona a foto de um veículo (upload multipart)")

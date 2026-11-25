@@ -5,13 +5,14 @@ import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
 import com.concessionaria.gomez.domain.exception.EntidadeNaoEncontradaException;
 import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.repository.CarroRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class CadastroCarroService {
 
     /********Começo de mensagens CONSTANTS *********/
@@ -24,8 +25,7 @@ public class CadastroCarroService {
 
     /********Fim de mensagens CONSTANTS *********/
 
-    @Autowired
-    private CarroRepository carroRepository;
+    private final CarroRepository carroRepository;
 
     @Transactional
     public Carro salvar(Carro carro) {

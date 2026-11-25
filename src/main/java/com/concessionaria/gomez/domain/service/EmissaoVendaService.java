@@ -6,7 +6,7 @@ import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.model.Cliente;
 import com.concessionaria.gomez.domain.model.Venda;
 import com.concessionaria.gomez.domain.repository.VendaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,19 +14,15 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 @Service
+@RequiredArgsConstructor
 public class EmissaoVendaService {
 
     private static final String MSG_VENDA_NAO_ENCONTRADA
             = "Não existe um registro de venda com código %d";
 
-    @Autowired
-    private VendaRepository vendaRepository;
-
-    @Autowired
-    private CadastroCarroService cadastroCarroService;
-
-    @Autowired
-    private CadastroClienteService cadastroClienteService;
+    private final VendaRepository vendaRepository;
+    private final CadastroCarroService cadastroCarroService;
+    private final CadastroClienteService cadastroClienteService;
 
     @Transactional
     public Venda realizarVenda(Long carroId, Long clienteId, BigDecimal valorVenda, String observacoes) {

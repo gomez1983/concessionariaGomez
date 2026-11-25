@@ -7,7 +7,6 @@ import com.concessionaria.gomez.domain.model.Cliente;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
 
@@ -19,9 +18,8 @@ class ClienteInputDisassemblerTest {
 
     @BeforeEach
     void setUp() {
-        disassembler = new ClienteInputDisassembler();
         ModelMapperConfig config = new ModelMapperConfig();
-        ReflectionTestUtils.setField(disassembler, "modelMapper", config.modelMapper());
+        disassembler = new ClienteInputDisassembler(config.modelMapper());
     }
 
     @Test

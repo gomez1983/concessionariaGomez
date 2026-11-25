@@ -5,8 +5,8 @@ import com.concessionaria.gomez.api.controller.ClienteController;
 import com.concessionaria.gomez.api.controller.VendaController;
 import com.concessionaria.gomez.api.model.VendaModel;
 import com.concessionaria.gomez.domain.model.Venda;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -16,10 +16,10 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Component
+@RequiredArgsConstructor
 public class VendaModelAssembler {
 
-    @Autowired
-    private ModelMapper modelMapper;
+    private final ModelMapper modelMapper;
 
     public VendaModel toModel(Venda venda) {
         if (venda == null) {

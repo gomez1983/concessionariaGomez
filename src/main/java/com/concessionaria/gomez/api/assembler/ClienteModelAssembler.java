@@ -3,8 +3,8 @@ package com.concessionaria.gomez.api.assembler;
 import com.concessionaria.gomez.api.controller.ClienteController;
 import com.concessionaria.gomez.api.model.ClienteModel;
 import com.concessionaria.gomez.domain.model.Cliente;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -14,10 +14,10 @@ import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
 import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
 
 @Component
+@RequiredArgsConstructor
 public class ClienteModelAssembler {
 
-    @Autowired
-    private ModelMapper modelMapper;
+    private final ModelMapper modelMapper;
 
     public ClienteModel toModel(Cliente cliente) {
         if (cliente == null) {

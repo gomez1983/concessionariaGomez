@@ -10,8 +10,8 @@ import com.concessionaria.gomez.domain.service.CadastroClienteService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springdoc.core.annotations.ParameterObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -22,19 +22,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/clientes")
 @Tag(name = "Clientes", description = "Gerenciamento de clientes da Concessionária Gomez")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class ClienteController {
 
-    @Autowired
-    private ClienteRepository clienteRepository;
-
-    @Autowired
-    private CadastroClienteService cadastroCliente;
-
-    @Autowired
-    private ClienteModelAssembler clienteModelAssembler;
-
-    @Autowired
-    private ClienteInputDisassembler clienteInputDisassembler;
+    private final ClienteRepository clienteRepository;
+    private final CadastroClienteService cadastroCliente;
+    private final ClienteModelAssembler clienteModelAssembler;
+    private final ClienteInputDisassembler clienteInputDisassembler;
 
     @GetMapping
     @Operation(summary = "Lista todos os clientes com paginação e ordenação")

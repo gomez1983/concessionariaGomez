@@ -3,7 +3,7 @@ package com.concessionaria.gomez.infrastructure.service.storage;
 import com.concessionaria.gomez.core.storage.StorageProperties;
 import com.concessionaria.gomez.domain.exception.NegocioException;
 import com.concessionaria.gomez.domain.service.FotoStorageService;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileCopyUtils;
 
@@ -12,10 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 @Service
+@RequiredArgsConstructor
 public class DiscoLocalFotoStorageService implements FotoStorageService {
 
-    @Autowired
-    private StorageProperties storageProperties;
+    private final StorageProperties storageProperties;
 
     @Override
     public void armazenar(NovaFoto novaFoto) {

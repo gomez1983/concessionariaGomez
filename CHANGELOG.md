@@ -7,6 +7,17 @@ e este projeto adere ao [Semantic Versioning](https://semver.org/lang/pt-BR/).
 
 ---
 
+## [Não lançado]
+
+### Modificado
+- **Injeção de Dependências por Construtor (Lombok `@RequiredArgsConstructor`):**
+  - Substituída a injeção por campo (`@Autowired`) por campos `private final` com `@RequiredArgsConstructor` em 16 classes de produção: controllers (`CarroController`, `CarroFotoController`, `ClienteController`, `VendaController`), services (`CadastroCarroService`, `CadastroClienteService`, `CatalogoFotoCarroService`, `EmissaoVendaService`), assemblers (`CarroModelAssembler`, `CarroInputDisassembler`, `ClienteModelAssembler`, `ClienteInputDisassembler`, `FotoCarroModelAssembler`, `VendaModelAssembler`), `ApiExceptionHandler` e `DiscoLocalFotoStorageService`.
+  - Testes unitários dos quatro assemblers com testes próprios passaram a receber o `ModelMapper` pelo construtor, eliminando o uso de `ReflectionTestUtils`.
+  - Sem alteração de comportamento da API.
+  - *Motivação:* Dependências obrigatórias explícitas e imutáveis, falha imediata na inicialização caso algo falte, instanciação simples em testes unitários e padronização com as classes das Fases 6 e 7, que já usavam construtor.
+
+---
+
 ## [0.1.1-BETA] - 2026-10-02
 
 ### Adicionado

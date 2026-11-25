@@ -6,7 +6,6 @@ import com.concessionaria.gomez.domain.model.Carro;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -19,9 +18,8 @@ class CarroInputDisassemblerTest {
 
     @BeforeEach
     void setUp() {
-        disassembler = new CarroInputDisassembler();
         ModelMapperConfig config = new ModelMapperConfig();
-        ReflectionTestUtils.setField(disassembler, "modelMapper", config.modelMapper());
+        disassembler = new CarroInputDisassembler(config.modelMapper());
     }
 
     @Test
