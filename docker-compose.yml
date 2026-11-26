@@ -1,17 +1,24 @@
+# Credenciais vêm do arquivo .env (não versionado). Para criar: copie .env.example para .env.
+# Todas as portas ficam presas a 127.0.0.1, acessíveis apenas nesta máquina.
 services:
   mysql:
     image: mysql:8.0
     container_name: concessionaria-mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: catita01
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Defina MYSQL_ROOT_PASSWORD no arquivo .env (veja .env.example)}
       MYSQL_DATABASE: concessionaria
+      # Usuário da aplicação, restrito ao schema "concessionaria".
+      # Criado automaticamente apenas quando o volume do banco é novo.
+      MYSQL_USER: ${DB_APP_USERNAME:?Defina DB_APP_USERNAME no arquivo .env (veja .env.example)}
+      MYSQL_PASSWORD: ${DB_APP_PASSWORD:?Defina DB_APP_PASSWORD no arquivo .env (veja .env.example)}
     ports:
-      - "3307:3306"
+      - "127.0.0.1:3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pcatita01"]
+      # $$ evita que o Compose expanda a variável: ela é lida dentro do container.
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -27,12 +34,25 @@ services:
       mysql:
         condition: service_healthy
     environment:
+      # prod (padrão): sem Swagger/OpenAPI, sem SQL no log e sem mensagens internas nos erros.
+      # Para usar o Swagger localmente, defina SPRING_PROFILES_ACTIVE=dev no .env.
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       DB_URL: jdbc:mysql://mysql:3306/concessionaria?createDatabaseIfNotExist=true&serverTimezone=UTC
-      DB_USERNAME: root
-      DB_PASSWORD: catita01
+      DB_USERNAME: ${DB_APP_USERNAME:?Defina DB_APP_USERNAME no arquivo .env (veja .env.example)}
+      DB_PASSWORD: ${DB_APP_PASSWORD:?Defina DB_APP_PASSWORD no arquivo .env (veja .env.example)}
       CONCESSIONARIA_STORAGE_LOCAL_DIRETORIO_FOTOS: /app/catalogo-fotos
+      # Autenticação (Etapa 3a): sem JWT_SECRET o backend não sobe.
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET no arquivo .env (veja .env.example)}
+      # O navegador acessa a API em /api (proxy do Nginx), então o cookie de sessão vale para /api/auth.
+      AUTH_COOKIE_PATH: /api/auth
+      # true por padrão. Sem HTTPS, só localhost/127.0.0.1 aceitam cookie Secure (veja o guia DevOps).
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      # Usuários iniciais: criados só se ainda não existirem. Vazio = usuário não é criado.
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_GERENTE_PASSWORD: ${SEED_GERENTE_PASSWORD:-}
+      SEED_VENDEDOR_PASSWORD: ${SEED_VENDEDOR_PASSWORD:-}
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     volumes:
       - ./catalogo-fotos:/app/catalogo-fotos
 
@@ -45,7 +65,8 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      # O Nginx roda sem root e escuta na 8080 dentro do container (SEC-16)
+      - "127.0.0.1:80:8080"
 
 volumes:
   mysql_data:

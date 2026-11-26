@@ -101,10 +101,7 @@ public class GestaoPropostaComercialService {
         proposta.setNumero(gerarNumeroProposta());
         proposta.setCarro(carro);
         proposta.setCliente(cliente);
-        proposta.setVendedorIdentificador(
-                command.getVendedorIdentificador() != null && !command.getVendedorIdentificador().isBlank()
-                        ? command.getVendedorIdentificador().trim()
-                        : "vendedor@concessionariagomez.com.br");
+        proposta.setVendedorIdentificador(exigirIdentificador(command.getVendedorIdentificador()));
         proposta.setRevisaoAtualSequencia(1);
         proposta.setValidaAte(OffsetDateTime.now().plusDays(7));
         proposta.setStatus(StatusPropostaComercial.RASCUNHO);
@@ -119,8 +116,10 @@ public class GestaoPropostaComercialService {
     }
 
     @Transactional
-    public PropostaComercial criarNovaRevisao(Long propostaId, DadosRevisaoCommand command) {
+    public PropostaComercial criarNovaRevisao(Long propostaId, DadosRevisaoCommand command,
+                                              PerfilOperadorComercial perfilOperador) {
         PropostaComercial proposta = buscarOuFalhar(propostaId);
+        validarPropostaPropria(proposta, command.getVendedorIdentificador(), perfilOperador);
         if (proposta.getStatus() == StatusPropostaComercial.CONVERTIDA
                 || proposta.getStatus() == StatusPropostaComercial.CANCELADA) {
             throw new ConflitoNegociacaoException(
@@ -156,8 +155,9 @@ public class GestaoPropostaComercialService {
                     "Apenas operadores com perfil GERENTE ou ADMIN podem aprovar ou rejeitar propostas fora da autonomia.");
         }
 
+        String decisor = exigirIdentificador(decisorAutenticado);
         PropostaComercial proposta = buscarOuFalhar(propostaId);
-        if (decisorAutenticado != null && decisorAutenticado.trim().equalsIgnoreCase(proposta.getVendedorIdentificador())) {
+        if (decisor.equalsIgnoreCase(proposta.getVendedorIdentificador())) {
             throw new AcessoComercialNegadoException(
                     "Conflito de interesse: o vendedor responsável pela proposta não pode se autoaprovar como gerente.");
         }
@@ -185,9 +185,7 @@ public class GestaoPropostaComercialService {
 
         DecisaoAprovacao decisao = new DecisaoAprovacao();
         decisao.setRevisao(revisaoAtual);
-        decisao.setDecisorAutenticado(decisorAutenticado != null && !decisorAutenticado.isBlank()
-                ? decisorAutenticado.trim()
-                : "gerente@concessionariagomez.com.br");
+        decisao.setDecisorAutenticado(decisor);
         decisao.setAlcada(revisaoAtual.getAlcadaAnalise());
         decisao.setResultado(aprovar
                 ? ResultadoDecisaoAprovacao.APROVADA_GERENCIA
@@ -200,8 +198,10 @@ public class GestaoPropostaComercialService {
     }
 
     @Transactional
-    public PropostaComercial reservarVeiculoTemporariamente(Long propostaId, String responsavel, int horasValidade) {
+    public PropostaComercial reservarVeiculoTemporariamente(Long propostaId, String responsavel,
+                                                            PerfilOperadorComercial perfilOperador, int horasValidade) {
         PropostaComercial proposta = buscarOuFalhar(propostaId);
+        validarPropostaPropria(proposta, responsavel, perfilOperador);
         Carro carro = proposta.getCarro();
 
         if (!Boolean.TRUE.equals(carro.getAtivo())
@@ -226,8 +226,10 @@ public class GestaoPropostaComercialService {
     }
 
     @Transactional
-    public Venda converterEmVenda(Long propostaId, Integer sequenciaRevisaoAutorizada, String observacoesFechamento) {
+    public Venda converterEmVenda(Long propostaId, Integer sequenciaRevisaoAutorizada, String observacoesFechamento,
+                                  String operador, PerfilOperadorComercial perfilOperador) {
         PropostaComercial proposta = buscarOuFalhar(propostaId);
+        validarPropostaPropria(proposta, operador, perfilOperador);
         RevisaoProposta revisaoAtual = buscarRevisaoAtual(proposta);
 
         if (revisaoAtual == null) {
@@ -313,6 +315,29 @@ public class GestaoPropostaComercialService {
                 : "Convertida da proposta " + proposta.getNumero() + " (Rev. " + revisaoAtual.getSequencia() + ")");
 
         return vendaRepository.save(venda);
+    }
+
+    /**
+     * VENDEDOR só revisa, reserva e converte as próprias propostas; GERENTE e ADMIN operam qualquer uma.
+     */
+    void validarPropostaPropria(PropostaComercial proposta, String operador, PerfilOperadorComercial perfil) {
+        if (perfil != null && perfil.podeAprovarExcecaoGerencial()) {
+            return;
+        }
+        String identificador = exigirIdentificador(operador);
+        if (!identificador.equalsIgnoreCase(proposta.getVendedorIdentificador())) {
+            throw new AcessoComercialNegadoException(String.format(
+                    "A proposta %s pertence a outro vendedor. Apenas o vendedor responsável, um GERENTE ou um ADMIN podem alterá-la.",
+                    proposta.getNumero()));
+        }
+    }
+
+    /** O operador vem do token autenticado; ausência indica erro de programação, não dado do usuário. */
+    private static String exigirIdentificador(String identificador) {
+        if (identificador == null || identificador.isBlank()) {
+            throw new IllegalStateException("Operador autenticado não informado.");
+        }
+        return identificador.trim();
     }
 
     private RevisaoProposta construirNovaRevisao(

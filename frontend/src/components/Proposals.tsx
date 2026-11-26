@@ -22,9 +22,11 @@ import type {
   SimulacaoProposta,
   StatusProposta,
 } from '../types';
-import { allPages, api, errorMessage, getOperadorContext } from '../lib/api';
+import { allPages, api, errorMessage } from '../lib/api';
 import { currency } from '../lib/estoque';
 import { useResource } from '../lib/useResource';
+import { useUsuario } from '../lib/auth';
+import { ehGestao, podeConduzirProposta } from '../lib/permissoes';
 import { Button } from './ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { ErrorState, FormError, Loading } from './Feedback';
@@ -95,7 +97,9 @@ export function Proposals({
   const [page, setPage] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusProposta | ''>('');
   const [selectedProposta, setSelectedProposta] = useState<PropostaComercial | null>(null);
-  const [resumoClienteProposta, setResumoClienteProposta] = useState<PropostaComercial | null>(null);
+  const [resumoClienteProposta, setResumoClienteProposta] = useState<PropostaComercial | null>(
+    null,
+  );
   const [busyId, setBusyId] = useState<number | null>(null);
   const [actionError, setActionError] = useState('');
 
@@ -104,8 +108,9 @@ export function Proposals({
     [page, statusFilter, revision, perfil],
   );
 
-  const podeAprovar = perfil === 'GERENTE' || perfil === 'ADMIN';
-  const podeVerInterno = perfil === 'GERENTE' || perfil === 'ADMIN';
+  const usuario = useUsuario();
+  const podeAprovar = ehGestao(perfil);
+  const podeVerInterno = ehGestao(perfil);
 
   async function handleDecisaoGerencial(prop: PropostaComercial, aprovar: boolean) {
     const rev = prop.revisaoAtual;
@@ -113,15 +118,8 @@ export function Proposals({
     setBusyId(prop.id);
     setActionError('');
     try {
-      const ctx = getOperadorContext();
-      // Quando o usuário testa no mesmo navegador alternando o seletor para GERENTE/ADMIN,
-      // garantimos um identificador de decisor gerencial distinto caso a proposta tenha sido
-      // criada com o identificador padrão de gerente.
-      const decisorId =
-        ctx.operadorId.toLowerCase() === prop.vendedorIdentificador?.toLowerCase()
-          ? 'diretoria.aprovacao@concessionariagomez.com.br'
-          : ctx.operadorId;
-
+      // O decisor é sempre o operador atual. Se ele for o próprio vendedor da proposta,
+      // o backend recusa a decisão por conflito de interesse (sem autoaprovação).
       await api.decidirAprovacaoProposta(
         prop.id,
         rev.sequencia,
@@ -129,7 +127,6 @@ export function Proposals({
         aprovar
           ? 'Aprovada pela gerência comercial'
           : 'Condição comercial abaixo da rentabilidade mínima desejada',
-        decisorId,
       );
       resource.reload();
       onChanged(
@@ -167,7 +164,8 @@ export function Proposals({
           <div>
             <h2>Propostas comerciais & negociação assistida</h2>
             <p className="muted" style={{ fontSize: '0.86rem', marginTop: '0.2rem' }}>
-              Simulação em tempo real pelo motor financeiro, controle de alçada e conversão auditada.
+              Simulação em tempo real pelo motor financeiro, controle de alçada e conversão
+              auditada.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -207,7 +205,9 @@ export function Proposals({
           <div className="empty-state">
             <FileSpreadsheet size={34} />
             <h3>Nenhuma proposta encontrada neste filtro.</h3>
-            <p>Inicie uma nova proposta comercial para simular descontos, troca ou financiamento.</p>
+            <p>
+              Inicie uma nova proposta comercial para simular descontos, troca ou financiamento.
+            </p>
           </div>
         ) : (
           <div className="table-scroll">
@@ -237,7 +237,8 @@ export function Proposals({
                       <td>
                         <strong>{prop.numero}</strong>
                         <span className="vehicle-subtitle">
-                          Rev. #{prop.revisaoAtualSequencia} · Vendedor: {prop.vendedorIdentificador}
+                          Rev. #{prop.revisaoAtualSequencia} · Vendedor:{' '}
+                          {prop.vendedorIdentificador}
                         </span>
                       </td>
                       <td>
@@ -253,7 +254,8 @@ export function Proposals({
                         {rev && (
                           <span className="vehicle-subtitle">
                             Anunciado: {currency(rev.precoAnunciado)} · Desc:{' '}
-                            {currency(rev.descontoReais)} ({(rev.descontoPercentual * 100).toFixed(1)}%)
+                            {currency(rev.descontoReais)} (
+                            {(rev.descontoPercentual * 100).toFixed(1)}%)
                           </span>
                         )}
                       </td>
@@ -287,8 +289,8 @@ export function Proposals({
                           </strong>
                           {rev?.margemContribuicaoEstimada !== undefined && (
                             <span className="vehicle-subtitle">
-                              Margem: {(rev.margemContribuicaoEstimada * 100).toFixed(2)}% (Base: Preço
-                              negociado)
+                              Margem: {(rev.margemContribuicaoEstimada * 100).toFixed(2)}% (Base:
+                              Preço negociado)
                             </span>
                           )}
                         </td>
@@ -305,16 +307,19 @@ export function Proposals({
                             Resumo cliente
                           </Button>
 
-                          {prop.status !== 'CONVERTIDA' && prop.status !== 'CANCELADA' && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedProposta(prop)}
-                            >
-                              Nova revisão
-                            </Button>
-                          )}
+                          {/* Revisar e fechar venda: o vendedor dono da proposta, ou GERENTE/ADMIN */}
+                          {podeConduzirProposta(usuario, prop.vendedorIdentificador) &&
+                            prop.status !== 'CONVERTIDA' &&
+                            prop.status !== 'CANCELADA' && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setSelectedProposta(prop)}
+                              >
+                                Nova revisão
+                              </Button>
+                            )}
 
                           {podeAprovar && exigeDecisaoGerencial && rev && (
                             <>
@@ -340,17 +345,19 @@ export function Proposals({
                             </>
                           )}
 
-                          {prop.status === 'APROVADA' && rev && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              disabled={busyId === prop.id}
-                              onClick={() => void handleConverterVenda(prop)}
-                            >
-                              <Handshake size={14} />
-                              {busyId === prop.id ? 'Convertendo…' : 'Fechar venda'}
-                            </Button>
-                          )}
+                          {podeConduzirProposta(usuario, prop.vendedorIdentificador) &&
+                            prop.status === 'APROVADA' &&
+                            rev && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                disabled={busyId === prop.id}
+                                onClick={() => void handleConverterVenda(prop)}
+                              >
+                                <Handshake size={14} />
+                                {busyId === prop.id ? 'Convertendo…' : 'Fechar venda'}
+                              </Button>
+                            )}
                         </div>
                       </td>
                     </tr>
@@ -413,16 +420,19 @@ export function ProposalSimulatorDialog({
   onClose: () => void;
   onSaved: (message: string) => void;
 }) {
-  const options = useResource(async (signal) => {
-    const [carros, clientes] = await Promise.all([
-      allPages<Carro>('carros', signal),
-      allPages<Cliente>('clientes', signal),
-    ]);
-    return {
-      carros,
-      clientes: clientes.filter((c) => c.ativo),
-    };
-  }, [propostaExistente?.id]);
+  const options = useResource(
+    async (signal) => {
+      const [carros, clientes] = await Promise.all([
+        allPages<Carro>('carros', signal),
+        allPages<Cliente>('clientes', signal),
+      ]);
+      return {
+        carros,
+        clientes: clientes.filter((c) => c.ativo),
+      };
+    },
+    [propostaExistente?.id],
+  );
 
   const [carroId, setCarroId] = useState(
     propostaExistente
@@ -651,7 +661,10 @@ export function ProposalSimulatorDialog({
                   />
                 </label>
 
-                <label className="span-two" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <label
+                  className="span-two"
+                  style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+                >
                   <input
                     type="checkbox"
                     checked={incluirTroca}
@@ -703,12 +716,27 @@ export function ProposalSimulatorDialog({
                       background: badge.bg,
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: badge.color }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        fontWeight: 700,
+                        color: badge.color,
+                      }}
+                    >
                       <BadgeIcon size={18} />
                       <span>{badge.label}</span>
                       {simulando && <small style={{ marginLeft: 'auto' }}>Recalculando…</small>}
                     </div>
-                    <div style={{ fontSize: '0.84rem', marginTop: '0.5rem', display: 'grid', gap: '0.25rem' }}>
+                    <div
+                      style={{
+                        fontSize: '0.84rem',
+                        marginTop: '0.5rem',
+                        display: 'grid',
+                        gap: '0.25rem',
+                      }}
+                    >
                       <div>
                         Preço anunciado: <strong>{currency(simulacao.precoAnunciado)}</strong> ·
                         Desconto: <strong>{currency(simulacao.descontoReais)}</strong> (
@@ -722,9 +750,13 @@ export function ProposalSimulatorDialog({
                         <div>
                           Contribuição estimada (Gerência):{' '}
                           <strong>{currency(simulacao.contribuicaoEstimada)}</strong> (
-                          {((simulacao.margemContribuicaoEstimada ?? 0) * 100).toFixed(2)}% sobre venda)
+                          {((simulacao.margemContribuicaoEstimada ?? 0) * 100).toFixed(2)}% sobre
+                          venda)
                           {simulacao.pisoAbsoluto !== undefined && (
-                            <> · Piso absoluto: <strong>{currency(simulacao.pisoAbsoluto)}</strong></>
+                            <>
+                              {' '}
+                              · Piso absoluto: <strong>{currency(simulacao.pisoAbsoluto)}</strong>
+                            </>
                           )}
                         </div>
                       )}
@@ -803,7 +835,8 @@ function CustomerSummaryDialog({
         {resumo ? (
           <div className="info-copy" style={{ display: 'grid', gap: '0.55rem' }}>
             <p>
-              <strong>Proposta:</strong> {resumo.numeroProposta} (Rev. #{proposta.revisaoAtualSequencia})
+              <strong>Proposta:</strong> {resumo.numeroProposta} (Rev. #
+              {proposta.revisaoAtualSequencia})
             </p>
             <p>
               <strong>Cliente:</strong> {resumo.cliente}

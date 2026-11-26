@@ -10,9 +10,339 @@
       "key": "baseUrl",
       "value": "http://localhost:8080",
       "type": "string"
+    },
+    {
+      "key": "email",
+      "value": "gerente@concessionariagomez.com.br",
+      "type": "string",
+      "description": "Usuário do login (admin@, gerente@ ou vendedor@)"
+    },
+    {
+      "key": "senha",
+      "value": "",
+      "type": "string",
+      "description": "Senha do usuário (do seu .env). Preencha no ambiente ou na aba Variables; não versione."
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string",
+      "description": "Preenchido automaticamente pelo request 0.1 Login"
+    },
+    {
+      "key": "novaSenha",
+      "value": "",
+      "type": "string",
+      "description": "Nova senha para 0.5 Trocar a própria senha (10 a 72 caracteres). Não versione."
+    },
+    {
+      "key": "usuarioId",
+      "value": "",
+      "type": "string",
+      "description": "Preenchido por Usuários > 2. Cadastrar usuário"
     }
   ],
   "item": [
+    {
+      "name": "0. Autenticação",
+      "description": "Rode 0.1 Login antes dos demais requests: o accessToken (15 min) fica na variável da coleção e é enviado como Bearer em todas as outras requisições. Preencha as variáveis email e senha (nunca versione a senha).",
+      "item": [
+        {
+          "name": "0.1 Login (salva o accessToken)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Login aceito', () => pm.response.to.have.status(200));",
+                  "const corpo = pm.response.json();",
+                  "pm.collectionVariables.set('accessToken', corpo.accessToken);",
+                  "pm.test('Refresh token não vem no corpo', () => pm.expect(corpo.refreshToken).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"senha\": \"{{senha}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Autentica e grava o accessToken (15 min) na variável da coleção. Os demais requests usam Bearer {{accessToken}}. O refresh token vem só no cookie HttpOnly gomez_refresh."
+          },
+          "response": []
+        },
+        {
+          "name": "0.2 Usuário autenticado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "0.3 Renovar sessão (cookie)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) pm.collectionVariables.set('accessToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "gomez-spa"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            },
+            "description": "Usa o cookie gomez_refresh guardado pelo Postman após o login. Exige o cabeçalho X-Requested-With: gomez-spa. Atenção: no Docker o cookie vale para /api/auth, então a renovação só funciona com baseUrl = http://localhost/api (via Nginx); na porta 8080 direta, faça o login de novo."
+          },
+          "response": []
+        },
+        {
+          "name": "0.4 Logout",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Requested-With",
+                "value": "gomez-spa"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "0.5 Trocar a própria senha",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senhaAtual\": \"{{senha}}\",\n  \"novaSenha\": \"{{novaSenha}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/senha",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "senha"]
+            },
+            "description": "Exige a senha atual. Senha atual errada responde 400 e conta para o bloqueio (5 erros = 15 min). A nova senha deve ter de 10 a 72 caracteres. Encerra as outras sessões do usuário; sem o cookie (como no Postman pela porta 8080), encerra todas."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Usuários (ADMIN)",
+      "description": "Administração dos usuários do painel. Todas as rotas exigem login com perfil ADMIN (403 para os demais). O administrador nunca escolhe a senha de outra pessoa: o cadastro e a redefinição devolvem uma senha temporária uma única vez (Cache-Control: no-store).",
+      "item": [
+        {
+          "name": "1. Listar usuários",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios?page=0&size=20&sort=nome,asc",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "20"
+                },
+                {
+                  "key": "sort",
+                  "value": "nome,asc"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "2. Cadastrar usuário (gera senha temporária)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Usuário criado', () => pm.response.to.have.status(201));",
+                  "const corpo = pm.response.json();",
+                  "pm.collectionVariables.set('usuarioId', corpo.usuario.id);",
+                  "pm.test('Resposta não pode ficar em cache', () => pm.expect(pm.response.headers.get('Cache-Control')).to.include('no-store'));",
+                  "// A senha temporária aparece só nesta resposta: repasse-a ao usuário por um canal seguro."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Vendedora Exemplo\",\n  \"email\": \"vendedora.exemplo@concessionariagomez.com.br\",\n  \"perfil\": \"VENDEDOR\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios"]
+            },
+            "description": "E-mail único (409 se já existir). Perfis: VENDEDOR, GERENTE, ADMIN."
+          },
+          "response": []
+        },
+        {
+          "name": "3. Buscar usuário",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "{{usuarioId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "4. Alterar nome e perfil",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Vendedora Exemplo\",\n  \"perfil\": \"GERENTE\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "{{usuarioId}}"]
+            },
+            "description": "O e-mail não muda (identifica o autor na auditoria). Ninguém altera o próprio perfil. O novo perfil vale na próxima renovação do token (até 15 min)."
+          },
+          "response": []
+        },
+        {
+          "name": "5. Inativar usuário",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/ativo",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "{{usuarioId}}", "ativo"]
+            },
+            "description": "Encerra as sessões do usuário. Ninguém inativa a si mesmo."
+          },
+          "response": []
+        },
+        {
+          "name": "6. Reativar usuário",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/ativo",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "{{usuarioId}}", "ativo"]
+            },
+            "description": "Também zera o bloqueio por tentativas."
+          },
+          "response": []
+        },
+        {
+          "name": "7. Gerar senha temporária",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/usuarios/{{usuarioId}}/senha-temporaria",
+              "host": ["{{baseUrl}}"],
+              "path": ["usuarios", "{{usuarioId}}", "senha-temporaria"]
+            },
+            "description": "Para quem esqueceu a senha ou foi bloqueado: gera uma nova senha, zera o bloqueio e encerra as sessões do usuário. Para a própria senha, use 0.5."
+          },
+          "response": []
+        }
+      ]
+    },
     {
       "name": "Carros",
       "item": [
@@ -736,22 +1066,42 @@
           "response": []
         },
         {
-          "name": "4. Cancelar Venda",
+          "name": "4. Cancelar Venda (auditado)",
           "request": {
-            "method": "DELETE",
+            "method": "POST",
             "header": [],
             "url": {
-              "raw": "http://localhost:8080/vendas/1",
+              "raw": "http://localhost:8080/vendas/1/cancelamento-auditado?motivo=Desistência do cliente&reativarVeiculo=true",
               "protocol": "http",
               "host": ["localhost"],
               "port": "8080",
-              "path": ["vendas", "1"]
+              "path": ["vendas", "1", "cancelamento-auditado"],
+              "query": [
+                {
+                  "key": "motivo",
+                  "value": "Desistência do cliente"
+                },
+                {
+                  "key": "reativarVeiculo",
+                  "value": "true"
+                }
+              ]
             },
-            "description": "Cancela o registro da venda e reativa o veículo no estoque da concessionária."
+            "description": "Cancela a venda mantendo o registro auditado (motivo, responsável e data) e devolve o veículo ao estoque se não houver outra venda vigente. Substitui o DELETE /vendas/{id}, que está obsoleto."
           },
           "response": []
         }
       ]
     }
-  ]
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  }
 }

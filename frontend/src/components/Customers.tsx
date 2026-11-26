@@ -26,6 +26,8 @@ import { ConfirmAction, type Confirmation } from './ConfirmAction';
 import { Pagination } from './Pagination';
 import { Status } from './Stock';
 import { statusLabel } from './Proposals';
+import { useUsuario } from '../lib/auth';
+import { ehAdmin, ehGestao } from '../lib/permissoes';
 
 export function Customers({
   revision,
@@ -38,6 +40,9 @@ export function Customers({
   formRequested: boolean;
   closeForm: () => void;
 }) {
+  const { perfil } = useUsuario();
+  const podeAtivar = ehGestao(perfil);
+  const podeExcluir = ehAdmin(perfil);
   const [page, setPage] = useState(0);
   const [viewing, setViewing] = useState<Cliente | null>(null);
   const [editing, setEditing] = useState<Cliente>();
@@ -126,50 +131,54 @@ export function Customers({
                         >
                           <Eye size={15} />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          disabled={busy}
-                          aria-label={`${cliente.ativo ? 'Inativar' : 'Ativar'} ${cliente.nome}`}
-                          onClick={async () => {
-                            setBusy(true);
-                            setError('');
-                            try {
-                              await api.toggle('clientes', cliente.id, cliente.ativo);
-                              onChanged('Status do cliente atualizado.');
-                            } catch (error) {
-                              setError(
-                                error instanceof Error
-                                  ? error.message
-                                  : 'Não foi possível atualizar.',
-                              );
-                            } finally {
-                              setBusy(false);
+                        {podeAtivar && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            disabled={busy}
+                            aria-label={`${cliente.ativo ? 'Inativar' : 'Ativar'} ${cliente.nome}`}
+                            onClick={async () => {
+                              setBusy(true);
+                              setError('');
+                              try {
+                                await api.toggle('clientes', cliente.id, cliente.ativo);
+                                onChanged('Status do cliente atualizado.');
+                              } catch (error) {
+                                setError(
+                                  error instanceof Error
+                                    ? error.message
+                                    : 'Não foi possível atualizar.',
+                                );
+                              } finally {
+                                setBusy(false);
+                              }
+                            }}
+                          >
+                            <Power size={15} />
+                          </Button>
+                        )}
+                        {podeExcluir && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="delete-action"
+                            aria-label={`Excluir ${cliente.nome}`}
+                            onClick={() =>
+                              setConfirmation({
+                                title: 'Excluir cliente?',
+                                description: `${cliente.nome} será removido. Clientes com vendas vinculadas não podem ser excluídos.`,
+                                label: 'Excluir cliente',
+                                action: async () => {
+                                  await api.remove('clientes', cliente.id);
+                                  setPage(0);
+                                  onChanged('Cliente excluído.');
+                                },
+                              })
                             }
-                          }}
-                        >
-                          <Power size={15} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="delete-action"
-                          aria-label={`Excluir ${cliente.nome}`}
-                          onClick={() =>
-                            setConfirmation({
-                              title: 'Excluir cliente?',
-                              description: `${cliente.nome} será removido. Clientes com vendas vinculadas não podem ser excluídos.`,
-                              label: 'Excluir cliente',
-                              action: async () => {
-                                await api.remove('clientes', cliente.id);
-                                setPage(0);
-                                onChanged('Cliente excluído.');
-                              },
-                            })
-                          }
-                        >
-                          <Trash2 size={15} />
-                        </Button>
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -234,22 +243,23 @@ function CustomerDetailsModal({
   onClose: () => void;
   onEdit: () => void;
 }) {
-  const history = useResource(async (signal) => {
-    const [propostasPage, todasVendas] = await Promise.all([
-      api.propostasPorCliente(cliente.id, signal),
-      allPages<Venda>('vendas', signal),
-    ]);
-    return {
-      propostas: propostasPage.content,
-      vendas: todasVendas.filter((v) => v.cliente.id === cliente.id),
-    };
-  }, [cliente.id]);
+  const history = useResource(
+    async (signal) => {
+      const [propostasPage, todasVendas] = await Promise.all([
+        api.propostasPorCliente(cliente.id, signal),
+        allPages<Venda>('vendas', signal),
+      ]);
+      return {
+        propostas: propostasPage.content,
+        vendas: todasVendas.filter((v) => v.cliente.id === cliente.id),
+      };
+    },
+    [cliente.id],
+  );
 
   const end = cliente.endereco;
   const totalComprado =
-    history.data?.vendas
-      .filter((v) => !v.cancelada)
-      .reduce((acc, v) => acc + v.valorVenda, 0) ?? 0;
+    history.data?.vendas.filter((v) => !v.cancelada).reduce((acc, v) => acc + v.valorVenda, 0) ?? 0;
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

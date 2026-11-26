@@ -2,6 +2,7 @@ package com.concessionaria.gomez.api.assembler;
 
 import com.concessionaria.gomez.api.model.CarroModel;
 import com.concessionaria.gomez.domain.model.Carro;
+import com.concessionaria.gomez.domain.model.PerfilOperadorComercial;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -45,7 +46,7 @@ class CarroModelAssemblerTest {
         carro.setQuilometragem(0);
         carro.setAtivo(true);
 
-        CarroModel model = assembler.toModel(carro);
+        CarroModel model = assembler.toModel(carro, PerfilOperadorComercial.GERENTE);
 
         assertThat(model).isNotNull();
         assertThat(model.getId()).isEqualTo(1L);
@@ -82,7 +83,7 @@ class CarroModelAssemblerTest {
         carro.setQuilometragem(45000);
         carro.setAtivo(false);
 
-        CarroModel model = assembler.toModel(carro);
+        CarroModel model = assembler.toModel(carro, PerfilOperadorComercial.VENDEDOR);
 
         assertThat(model).isNotNull();
         assertThat(model.getQuilometragem()).isEqualTo(45000);
@@ -95,7 +96,7 @@ class CarroModelAssemblerTest {
     @Test
     @DisplayName("Deve retornar null quando Carro for nulo")
     void deveRetornarNullQuandoCarroForNulo() {
-        CarroModel model = assembler.toModel(null);
+        CarroModel model = assembler.toModel(null, PerfilOperadorComercial.GERENTE);
         assertThat(model).isNull();
     }
 
@@ -114,7 +115,7 @@ class CarroModelAssemblerTest {
         c2.setQuilometragem(0);
         c2.setAtivo(false);
 
-        List<CarroModel> models = assembler.toCollectionModel(List.of(c1, c2));
+        List<CarroModel> models = assembler.toCollectionModel(List.of(c1, c2), PerfilOperadorComercial.GERENTE);
 
         assertThat(models).hasSize(2);
         assertThat(models.get(0).getVenda()).isEqualByComparingTo(new BigDecimal("55000.00"));
@@ -123,5 +124,24 @@ class CarroModelAssemblerTest {
         assertThat(models.get(1).getZeroKm()).isTrue();
         assertThat(models.get(0).hasLink("self")).isTrue();
         assertThat(models.get(1).hasLink("self")).isTrue();
+    }
+
+    @Test
+    @DisplayName("Deve ocultar o valor de compra para VENDEDOR ou perfil ausente, mantendo o preço de venda")
+    void deveOcultarCompraParaPerfilSemAcessoACustos() {
+        Carro carro = new Carro();
+        carro.setId(3L);
+        carro.setCompra(new BigDecimal("100000.00"));
+        carro.setQuilometragem(0);
+        carro.setAtivo(true);
+
+        CarroModel vendedor = assembler.toModel(carro, PerfilOperadorComercial.VENDEDOR);
+        CarroModel semPerfil = assembler.toModel(carro, null);
+        CarroModel admin = assembler.toModel(carro, PerfilOperadorComercial.ADMIN);
+
+        assertThat(vendedor.getCompra()).isNull();
+        assertThat(vendedor.getVenda()).isEqualByComparingTo(new BigDecimal("110000.00"));
+        assertThat(semPerfil.getCompra()).isNull();
+        assertThat(admin.getCompra()).isEqualByComparingTo(new BigDecimal("100000.00"));
     }
 }

@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/clientes")
 @Tag(name = "Clientes", description = "Gerenciamento de clientes da Concessionária Gomez")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class ClienteController {
 

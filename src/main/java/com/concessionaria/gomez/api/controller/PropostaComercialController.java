@@ -1,13 +1,16 @@
 package com.concessionaria.gomez.api.controller;
 
+import com.concessionaria.gomez.api.assembler.PoliticaComercialModelAssembler;
 import com.concessionaria.gomez.api.assembler.PropostaComercialAssembler;
 import com.concessionaria.gomez.api.assembler.VendaModelAssembler;
+import com.concessionaria.gomez.api.model.PoliticaComercialModel;
 import com.concessionaria.gomez.api.model.PropostaComercialModel;
 import com.concessionaria.gomez.api.model.SimulacaoPropostaModel;
 import com.concessionaria.gomez.api.model.VendaModel;
 import com.concessionaria.gomez.api.model.input.DecisaoAprovacaoInput;
 import com.concessionaria.gomez.api.model.input.PoliticaComercialInput;
 import com.concessionaria.gomez.api.model.input.PropostaComercialInput;
+import com.concessionaria.gomez.core.security.OperadorAutenticado;
 import com.concessionaria.gomez.domain.exception.AcessoComercialNegadoException;
 import com.concessionaria.gomez.domain.model.*;
 import com.concessionaria.gomez.domain.repository.PoliticaComercialRepository;
@@ -35,7 +38,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/propostas")
 @Tag(name = "Propostas Comerciais", description = "Simulação, negociação assistida, alçadas de aprovação e conversão em venda")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class PropostaComercialController {
 
@@ -45,6 +47,7 @@ public class PropostaComercialController {
     private final GestaoPropostaComercialService gestaoPropostaService;
     private final PropostaComercialAssembler assembler;
     private final VendaModelAssembler vendaAssembler;
+    private final PoliticaComercialModelAssembler politicaAssembler;
 
     @GetMapping
     @Operation(summary = "Lista propostas comerciais com filtro por status, vendedor, clienteId e carroId")
@@ -53,10 +56,10 @@ public class PropostaComercialController {
             @RequestParam(required = false) String vendedor,
             @RequestParam(required = false) Long clienteId,
             @RequestParam(required = false) Long carroId,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader,
+            OperadorAutenticado operador,
             @ParameterObject @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
+        PerfilOperadorComercial perfil = operador.perfil();
 
         Specification<PropostaComercial> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -84,9 +87,9 @@ public class PropostaComercialController {
     @Operation(summary = "Busca os detalhes de uma proposta comercial por ID com revisão atual e resumo para cliente")
     public PropostaComercialModel buscar(
             @PathVariable Long propostaId,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader) {
+            OperadorAutenticado operador) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
+        PerfilOperadorComercial perfil = operador.perfil();
         PropostaComercial proposta = gestaoPropostaService.buscarOuFalhar(propostaId);
         RevisaoProposta revisaoAtual = gestaoPropostaService.buscarRevisaoAtual(proposta);
         return assembler.toModel(proposta, revisaoAtual, perfil);
@@ -96,11 +99,10 @@ public class PropostaComercialController {
     @Operation(summary = "Simula em tempo real o cenário financeiro, pisos e alçada de aprovação sem gravar no banco")
     public SimulacaoPropostaModel simular(
             @RequestBody @Valid PropostaComercialInput input,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader,
-            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+            OperadorAutenticado operador) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
-        var command = assembler.toCommand(input, operadorId);
+        PerfilOperadorComercial perfil = operador.perfil();
+        var command = assembler.toCommand(input, operador.email(), perfil);
         var analise = gestaoPropostaService.simular(command);
         return assembler.toSimulacaoModel(analise, perfil);
     }
@@ -110,11 +112,10 @@ public class PropostaComercialController {
     @Operation(summary = "Cria uma nova proposta comercial com sua primeira revisão")
     public PropostaComercialModel criar(
             @RequestBody @Valid PropostaComercialInput input,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader,
-            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+            OperadorAutenticado operador) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
-        var command = assembler.toCommand(input, operadorId);
+        PerfilOperadorComercial perfil = operador.perfil();
+        var command = assembler.toCommand(input, operador.email(), perfil);
         PropostaComercial proposta = gestaoPropostaService.criarProposta(command);
         return assembler.toModel(proposta, gestaoPropostaService.buscarRevisaoAtual(proposta), perfil);
     }
@@ -124,12 +125,11 @@ public class PropostaComercialController {
     public PropostaComercialModel criarRevisao(
             @PathVariable Long propostaId,
             @RequestBody @Valid PropostaComercialInput input,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader,
-            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+            OperadorAutenticado operador) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
-        var command = assembler.toCommand(input, operadorId);
-        PropostaComercial proposta = gestaoPropostaService.criarNovaRevisao(propostaId, command);
+        PerfilOperadorComercial perfil = operador.perfil();
+        var command = assembler.toCommand(input, operador.email(), perfil);
+        PropostaComercial proposta = gestaoPropostaService.criarNovaRevisao(propostaId, command, perfil);
         return assembler.toModel(proposta, gestaoPropostaService.buscarRevisaoAtual(proposta), perfil);
     }
 
@@ -138,14 +138,13 @@ public class PropostaComercialController {
     public PropostaComercialModel decidirAprovacao(
             @PathVariable Long propostaId,
             @RequestBody @Valid DecisaoAprovacaoInput input,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader,
-            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+            OperadorAutenticado operador) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
+        PerfilOperadorComercial perfil = operador.perfil();
         PropostaComercial proposta = gestaoPropostaService.decidirAprovacaoGerencial(
                 propostaId,
                 input.getSequenciaRevisao(),
-                operadorId,
+                operador.email(),
                 perfil,
                 Boolean.TRUE.equals(input.getAprovar()),
                 input.getMotivo());
@@ -157,11 +156,10 @@ public class PropostaComercialController {
     @Operation(summary = "Reserva temporariamente o veículo para a proposta comercial")
     public PropostaComercialModel reservar(
             @PathVariable Long propostaId,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader,
-            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+            OperadorAutenticado operador) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
-        PropostaComercial proposta = gestaoPropostaService.reservarVeiculoTemporariamente(propostaId, operadorId, 48);
+        PerfilOperadorComercial perfil = operador.perfil();
+        PropostaComercial proposta = gestaoPropostaService.reservarVeiculoTemporariamente(propostaId, operador.email(), perfil, 48);
         return assembler.toModel(proposta, gestaoPropostaService.buscarRevisaoAtual(proposta), perfil);
     }
 
@@ -171,35 +169,46 @@ public class PropostaComercialController {
     public VendaModel converterEmVenda(
             @PathVariable Long propostaId,
             @RequestParam(required = false) Integer sequenciaRevisao,
-            @RequestParam(required = false) String observacoes) {
+            @RequestParam(required = false) String observacoes,
+            OperadorAutenticado operador) {
 
-        Venda venda = gestaoPropostaService.converterEmVenda(propostaId, sequenciaRevisao, observacoes);
+        Venda venda = gestaoPropostaService.converterEmVenda(
+                propostaId, sequenciaRevisao, observacoes, operador.email(), operador.perfil());
         return vendaAssembler.toModel(venda);
     }
 
     @GetMapping("/politica-vigente")
-    @Operation(summary = "Consulta a política comercial vigente para a loja ou para um veículo específico")
-    public PoliticaComercial consultarPoliticaVigente(@RequestParam(required = false) Long carroId) {
+    @Operation(summary = "Consulta a política comercial vigente para a loja ou para um veículo específico (restrito a GERENTE ou ADMIN)")
+    public PoliticaComercialModel consultarPoliticaVigente(
+            @RequestParam(required = false) Long carroId,
+            OperadorAutenticado operador) {
+
+        // As margens da política (inclusive o piso absoluto) permitem reconstruir o limite de negociação.
+        PerfilOperadorComercial perfil = operador.perfil();
+        if (!perfil.podeVerCustosEMargensInternas()) {
+            throw new AcessoComercialNegadoException(
+                    "Apenas GERENTE ou ADMIN podem consultar as margens da política comercial.");
+        }
+
         OffsetDateTime agora = OffsetDateTime.now();
         if (carroId != null) {
             var excecoes = politicaRepository.findVigentes(ContextoPoliticaComercial.EXCECAO_VEICULO, carroId, agora);
             if (!excecoes.isEmpty()) {
-                return excecoes.get(0);
+                return politicaAssembler.toModel(excecoes.get(0));
             }
         }
         var padroes = politicaRepository.findVigentes(ContextoPoliticaComercial.LOJA_PADRAO, null, agora);
-        return padroes.isEmpty() ? null : padroes.get(0);
+        return padroes.isEmpty() ? null : politicaAssembler.toModel(padroes.get(0));
     }
 
     @PostMapping("/politicas")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Cadastra uma nova versão de política comercial (restrito a GERENTE ou ADMIN)")
-    public PoliticaComercial cadastrarPolitica(
+    public PoliticaComercialModel cadastrarPolitica(
             @RequestBody @Valid PoliticaComercialInput input,
-            @RequestHeader(value = "X-Operador-Perfil", required = false) String perfilHeader,
-            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+            OperadorAutenticado operador) {
 
-        PerfilOperadorComercial perfil = PerfilOperadorComercial.fromHeader(perfilHeader);
+        PerfilOperadorComercial perfil = operador.perfil();
         if (!perfil.podeConfigurarPolitica()) {
             throw new AcessoComercialNegadoException("Apenas GERENTE ou ADMIN podem configurar políticas comerciais.");
         }
@@ -218,13 +227,11 @@ public class PropostaComercialController {
         nova.setMargemPisoAbsoluto(input.getMargemPisoAbsoluto());
         nova.setDescontoMaximoAutonomiaReais(input.getDescontoMaximoAutonomiaReais());
         nova.setDescontoMaximoAutonomiaPercentual(input.getDescontoMaximoAutonomiaPercentual());
-        nova.setResponsavelCadastro(operadorId != null && !operadorId.isBlank()
-                ? operadorId.trim()
-                : "gestor@concessionariagomez.com.br");
+        nova.setResponsavelCadastro(operador.email());
         nova.setVigenteAPartirDe(OffsetDateTime.now().minusSeconds(1));
         nova.setAtiva(Boolean.TRUE);
         nova.validarInvariantes();
 
-        return politicaRepository.save(nova);
+        return politicaAssembler.toModel(politicaRepository.save(nova));
     }
 }

@@ -259,7 +259,8 @@ class GestaoPropostaComercialServiceTest {
             return v;
         });
 
-        Venda vendaCriada = service.converterEmVenda(100L, 1, "Observação de faturamento");
+        Venda vendaCriada = service.converterEmVenda(100L, 1, "Observação de faturamento",
+                "vendedor.maria", PerfilOperadorComercial.VENDEDOR);
 
         assertThat(vendaCriada.getId()).isEqualTo(900L);
         assertThat(vendaCriada.getValorVenda()).isEqualByComparingTo("115000.00");
@@ -269,7 +270,8 @@ class GestaoPropostaComercialServiceTest {
 
         // Segunda chamada para a mesma revisão retorna a mesma venda de forma idempotente
         when(vendaRepository.findByRevisaoConvertidaId(eq(500L))).thenReturn(Optional.of(vendaCriada));
-        Venda vendaIdempotente = service.converterEmVenda(100L, 1, "Reenvio acidental");
+        Venda vendaIdempotente = service.converterEmVenda(100L, 1, "Reenvio acidental",
+                "vendedor.maria", PerfilOperadorComercial.VENDEDOR);
         assertThat(vendaIdempotente.getId()).isEqualTo(900L);
     }
 
@@ -292,5 +294,44 @@ class GestaoPropostaComercialServiceTest {
         assertThatThrownBy(() -> service.criarProposta(command))
                 .isInstanceOf(NegocioException.class)
                 .hasMessageContaining("composição de pagamentos");
+    }
+
+    @Test
+    @DisplayName("VENDEDOR não revisa, reserva nem converte proposta de outro vendedor; GERENTE pode")
+    void vendedorSoOperaPropostasProprias() {
+        PropostaComercial proposta = new PropostaComercial();
+        proposta.setId(300L);
+        proposta.setNumero("PC-TESTE-300");
+        proposta.setVendedorIdentificador("vendedor.maria");
+        proposta.setCarro(carroPadrao);
+        proposta.setCliente(clientePadrao);
+        proposta.setStatus(StatusPropostaComercial.EM_NEGOCIACAO);
+        when(propostaRepository.findById(300L)).thenReturn(Optional.of(proposta));
+
+        DadosRevisaoCommand revisaoDeOutro = DadosRevisaoCommand.builder()
+                .carroId(10L)
+                .clienteId(20L)
+                .vendedorIdentificador("vendedor.joao")
+                .precoNegociado(new BigDecimal("115000.00"))
+                .build();
+
+        assertThatThrownBy(() -> service.criarNovaRevisao(300L, revisaoDeOutro, PerfilOperadorComercial.VENDEDOR))
+                .isInstanceOf(AcessoComercialNegadoException.class)
+                .hasMessageContaining("pertence a outro vendedor");
+        assertThatThrownBy(() -> service.reservarVeiculoTemporariamente(
+                300L, "vendedor.joao", PerfilOperadorComercial.VENDEDOR, 48))
+                .isInstanceOf(AcessoComercialNegadoException.class);
+        assertThatThrownBy(() -> service.converterEmVenda(
+                300L, null, null, "vendedor.joao", PerfilOperadorComercial.VENDEDOR))
+                .isInstanceOf(AcessoComercialNegadoException.class);
+
+        // Nada foi alterado pelas tentativas negadas
+        assertThat(carroPadrao.getDisponibilidadeComercial()).isEqualTo(DisponibilidadeComercial.DISPONIVEL);
+        assertThat(proposta.getStatus()).isEqualTo(StatusPropostaComercial.EM_NEGOCIACAO);
+
+        // O dono (sem diferenciar maiúsculas) e a gerência podem reservar
+        service.reservarVeiculoTemporariamente(300L, "Vendedor.Maria", PerfilOperadorComercial.VENDEDOR, 48);
+        assertThat(carroPadrao.getDisponibilidadeComercial()).isEqualTo(DisponibilidadeComercial.RESERVADO);
+        service.reservarVeiculoTemporariamente(300L, "gerente.carlos", PerfilOperadorComercial.GERENTE, 48);
     }
 }

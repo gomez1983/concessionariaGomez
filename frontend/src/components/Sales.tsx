@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Banknote, Pencil, Undo2 } from 'lucide-react';
+import { useUsuario } from '../lib/auth';
+import { ehGestao } from '../lib/permissoes';
 import type { Carro, Cliente, Venda, VendaInput } from '../types';
 import { allPages, api } from '../lib/api';
 import { currency } from '../lib/estoque';
@@ -28,6 +30,8 @@ export function Sales({
   const [editingVenda, setEditingVenda] = useState<Venda | null>(null);
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const resource = useResource((signal) => api.vendas(page, signal), [page, revision]);
+  // Emitir, editar e cancelar vendas: GERENTE/ADMIN (o vendedor vende pela conversão da proposta)
+  const podeGerir = ehGestao(useUsuario().perfil);
   return (
     <>
       <section className="panel">
@@ -66,6 +70,14 @@ export function Sales({
                         {venda.carro.marca} {venda.carro.modelo}
                       </strong>
                       <span className="vehicle-subtitle">{venda.carro.ano}</span>
+                      {venda.cancelada && (
+                        <span
+                          className="status-badge inactive"
+                          title={venda.motivoCancelamento ?? undefined}
+                        >
+                          Cancelada
+                        </span>
+                      )}
                     </td>
                     <td>
                       {venda.cliente.nome}
@@ -83,35 +95,58 @@ export function Sales({
                       )}
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setEditingVenda(venda)}
+                      {venda.cancelada ? (
+                        <span
+                          className="vehicle-subtitle sale-note"
+                          title={venda.motivoCancelamento ?? undefined}
                         >
-                          <Pencil size={14} />
-                          Editar
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() =>
-                            setConfirmation({
-                              title: 'Cancelar esta venda?',
-                              description: `A venda de ${venda.carro.marca} ${venda.carro.modelo} para ${venda.cliente.nome} será cancelada. O backend reativará o veículo no estoque.`,
-                              label: 'Cancelar venda',
-                              action: async () => {
-                                await api.remove('vendas', venda.id);
-                                setPage(0);
-                                onChanged('Venda cancelada. Veículo reativado no estoque.');
-                              },
-                            })
-                          }
-                        >
-                          <Undo2 size={14} />
-                          Cancelar
-                        </Button>
-                      </div>
+                          {venda.motivoCancelamento
+                            ? `Motivo: ${venda.motivoCancelamento}`
+                            : 'Cancelada com auditoria'}
+                        </span>
+                      ) : (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                          {/* Vendas originadas de proposta têm valores congelados (a API recusa a edição). */}
+                          {podeGerir && venda.origemLegada !== false && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setEditingVenda(venda)}
+                            >
+                              <Pencil size={14} />
+                              Editar
+                            </Button>
+                          )}
+                          {podeGerir && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setConfirmation({
+                                  title: 'Cancelar esta venda?',
+                                  description: `A venda de ${venda.carro.marca} ${venda.carro.modelo} para ${venda.cliente.nome} será cancelada e mantida no histórico com o motivo informado. O veículo volta ao estoque.`,
+                                  label: 'Cancelar venda',
+                                  reason: {
+                                    label: 'Motivo do cancelamento',
+                                    placeholder:
+                                      'Ex.: desistência do cliente, financiamento recusado…',
+                                    maxLength: 255,
+                                  },
+                                  action: async (motivo) => {
+                                    await api.cancelarVenda(venda.id, motivo ?? '');
+                                    onChanged(
+                                      'Venda cancelada com auditoria. Veículo reativado no estoque.',
+                                    );
+                                  },
+                                })
+                              }
+                            >
+                              <Undo2 size={14} />
+                              Cancelar
+                            </Button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -128,7 +163,7 @@ export function Sales({
           />
         )}
       </section>
-      {(formRequested || editingVenda) && (
+      {podeGerir && (formRequested || editingVenda) && (
         <SaleForm
           venda={editingVenda ?? undefined}
           onClose={() => {
@@ -140,7 +175,11 @@ export function Sales({
             if (formRequested) closeForm();
             if (editingVenda) setEditingVenda(null);
             resource.reload();
-            onChanged(id ? 'Venda atualizada com sucesso.' : 'Venda registrada. Veículo inativado no estoque.');
+            onChanged(
+              id
+                ? 'Venda atualizada com sucesso.'
+                : 'Venda registrada. Veículo inativado no estoque.',
+            );
           }}
         />
       )}
@@ -159,40 +198,43 @@ function SaleForm({
   onSave: (input: VendaInput, id?: number) => Promise<void>;
   venda?: Venda;
 }) {
-  const options = useResource(async (signal) => {
-    const [carros, clientes] = await Promise.all([
-      allPages<Carro>('carros', signal),
-      allPages<Cliente>('clientes', signal),
-    ]);
-    const listCarros = [...carros];
-    if (venda && !listCarros.some((c) => c.id === venda.carro.id)) {
-      listCarros.unshift({
-        id: venda.carro.id,
-        marca: venda.carro.marca,
-        modelo: venda.carro.modelo,
-        ano: venda.carro.ano,
-        compra: 0,
-        venda: venda.valorVenda,
-        zeroKm: false,
-        quilometragem: 0,
-        ativo: false,
-      });
-    }
-    const listClientes = [...clientes.filter((cliente) => cliente.ativo)];
-    if (venda && !listClientes.some((c) => c.id === venda.cliente.id)) {
-      listClientes.unshift({
-        id: venda.cliente.id,
-        nome: venda.cliente.nome,
-        cpfCnpj: venda.cliente.cpfCnpj,
-        telefone: '',
-        email: '',
-        ativo: true,
-        endereco: null,
-        dataCadastro: '',
-      });
-    }
-    return { carros: listCarros, clientes: listClientes };
-  }, [venda?.id]);
+  const options = useResource(
+    async (signal) => {
+      const [carros, clientes] = await Promise.all([
+        allPages<Carro>('carros', signal),
+        allPages<Cliente>('clientes', signal),
+      ]);
+      const listCarros = [...carros];
+      if (venda && !listCarros.some((c) => c.id === venda.carro.id)) {
+        listCarros.unshift({
+          id: venda.carro.id,
+          marca: venda.carro.marca,
+          modelo: venda.carro.modelo,
+          ano: venda.carro.ano,
+          compra: 0,
+          venda: venda.valorVenda,
+          zeroKm: false,
+          quilometragem: 0,
+          ativo: false,
+        });
+      }
+      const listClientes = [...clientes.filter((cliente) => cliente.ativo)];
+      if (venda && !listClientes.some((c) => c.id === venda.cliente.id)) {
+        listClientes.unshift({
+          id: venda.cliente.id,
+          nome: venda.cliente.nome,
+          cpfCnpj: venda.cliente.cpfCnpj,
+          telefone: '',
+          email: '',
+          ativo: true,
+          endereco: null,
+          dataCadastro: '',
+        });
+      }
+      return { carros: listCarros, clientes: listClientes };
+    },
+    [venda?.id],
+  );
 
   const [carroId, setCarroId] = useState(venda ? String(venda.carro.id) : '');
   const [busy, setBusy] = useState(false);
@@ -272,7 +314,11 @@ function SaleForm({
                 </label>
                 <label className="span-two">
                   Cliente
-                  <select name="clienteId" required defaultValue={venda ? String(venda.cliente.id) : ''}>
+                  <select
+                    name="clienteId"
+                    required
+                    defaultValue={venda ? String(venda.cliente.id) : ''}
+                  >
                     <option value="">Selecione um cliente</option>
                     {options.data?.clientes.map((cliente) => (
                       <option key={cliente.id} value={cliente.id}>

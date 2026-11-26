@@ -3,8 +3,11 @@ package com.concessionaria.gomez.api.controller;
 import com.concessionaria.gomez.api.assembler.CarroInputDisassembler;
 import com.concessionaria.gomez.api.assembler.CarroModelAssembler;
 import com.concessionaria.gomez.api.model.CarroModel;
+import com.concessionaria.gomez.core.security.OperadorAutenticado;
+import com.concessionaria.gomez.domain.exception.AcessoComercialNegadoException;
 import com.concessionaria.gomez.domain.filter.CarroFilter;
 import com.concessionaria.gomez.domain.model.Carro;
+import com.concessionaria.gomez.domain.model.PerfilOperadorComercial;
 import com.concessionaria.gomez.domain.repository.CarroRepository;
 import com.concessionaria.gomez.domain.service.CadastroCarroService;
 import org.junit.jupiter.api.DisplayName;
@@ -30,6 +33,11 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CarroControllerTest {
+
+    private static final OperadorAutenticado GERENTE =
+            new OperadorAutenticado("gerente@teste.com", "Gerente", PerfilOperadorComercial.GERENTE);
+    private static final OperadorAutenticado VENDEDOR =
+            new OperadorAutenticado("vendedor@teste.com", "Vendedor", PerfilOperadorComercial.VENDEDOR);
 
     @Mock
     private CarroRepository carroRepository;
@@ -71,9 +79,9 @@ class CarroControllerTest {
         Page<Carro> paginaCarros = new PageImpl<>(List.of(carro1), pageable, 1);
 
         when(carroRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(paginaCarros);
-        when(carroModelAssembler.toModel(carro1)).thenReturn(model1);
+        when(carroModelAssembler.toModel(carro1, PerfilOperadorComercial.GERENTE)).thenReturn(model1);
 
-        Page<CarroModel> resultado = carroController.listar(new CarroFilter(), pageable);
+        Page<CarroModel> resultado = carroController.listar(new CarroFilter(), pageable, GERENTE);
 
         assertNotNull(resultado);
         assertEquals(1, resultado.getTotalElements());
@@ -87,7 +95,7 @@ class CarroControllerTest {
         assertEquals(false, resultado.getContent().getFirst().getZeroKm());
 
         verify(carroRepository).findAll(any(Specification.class), eq(pageable));
-        verify(carroModelAssembler).toModel(carro1);
+        verify(carroModelAssembler).toModel(carro1, PerfilOperadorComercial.GERENTE);
     }
 
     @Test
@@ -108,7 +116,7 @@ class CarroControllerTest {
         when(carroRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(paginaVazia);
 
-        Page<CarroModel> resultado = carroController.listar(filtro, pageable);
+        Page<CarroModel> resultado = carroController.listar(filtro, pageable, GERENTE);
 
         assertNotNull(resultado);
         assertTrue(resultado.isEmpty());
@@ -118,5 +126,21 @@ class CarroControllerTest {
 
         verify(carroRepository).findAll(any(Specification.class), eq(pageable));
         verifyNoInteractions(carroModelAssembler);
+    }
+
+    @Test
+    @DisplayName("Deve recusar filtro e ordenação por valor de compra para VENDEDOR, sem consultar o banco")
+    void deveRecusarConsultaPorCustoSemPerfilGerencial() {
+        CarroFilter filtroPorCusto = new CarroFilter();
+        filtroPorCusto.setMinValor(new BigDecimal("100000.00"));
+        Pageable ordenadoPorCusto = PageRequest.of(0, 10, Sort.by("compra").ascending());
+        Pageable semOrdenacao = PageRequest.of(0, 10);
+
+        assertThrows(AcessoComercialNegadoException.class,
+                () -> carroController.listar(filtroPorCusto, semOrdenacao, VENDEDOR));
+        assertThrows(AcessoComercialNegadoException.class,
+                () -> carroController.listar(new CarroFilter(), ordenadoPorCusto, VENDEDOR));
+
+        verifyNoInteractions(carroRepository, carroModelAssembler);
     }
 }

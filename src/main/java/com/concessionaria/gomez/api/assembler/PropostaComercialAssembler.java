@@ -26,7 +26,10 @@ public class PropostaComercialAssembler {
 
     public GestaoPropostaComercialService.DadosRevisaoCommand toCommand(
             PropostaComercialInput input,
-            String vendedorIdentificador) {
+            String vendedorIdentificador,
+            PerfilOperadorComercial perfil) {
+
+        boolean podeConfirmarReceitaAdicional = perfil != null && perfil.podeAprovarExcecaoGerencial();
 
         List<ItemFinanceiroRevisao> itens = input.getItensExtras() == null
                 ? Collections.emptyList()
@@ -35,7 +38,11 @@ public class PropostaComercialAssembler {
                     item.setNatureza(i.getNatureza());
                     item.setBaseCalculo(i.getBaseCalculo());
                     item.setValor(i.getValor());
-                    item.setConfirmado(i.isConfirmado());
+                    // Receita adicional reduz o piso de margem: quando declarada por quem não tem
+                    // alçada gerencial, entra pendente e bloqueia a aprovação até a confirmação.
+                    boolean receitaAdicional =
+                            i.getBaseCalculo() == BaseCalculoItemFinanceiro.RECEITA_ADICIONAL_ELEGIVEL;
+                    item.setConfirmado(i.isConfirmado() && (!receitaAdicional || podeConfirmarReceitaAdicional));
                     item.setDescricao(i.getDescricao());
                     item.setOrigem("PROPOSTA");
                     return item;
@@ -270,7 +277,7 @@ public class PropostaComercialAssembler {
             model.add(linkTo(PropostaComercialController.class).withRel("propostas"));
 
             if (proposta.getCarro() != null && proposta.getCarro().getId() != null) {
-                model.add(linkTo(methodOn(CarroController.class).buscar(proposta.getCarro().getId())).withRel("carro"));
+                model.add(linkTo(methodOn(CarroController.class).buscar(proposta.getCarro().getId(), null)).withRel("carro"));
             }
             if (proposta.getCliente() != null && proposta.getCliente().getId() != null) {
                 model.add(linkTo(methodOn(ClienteController.class).buscar(proposta.getCliente().getId())).withRel("cliente"));

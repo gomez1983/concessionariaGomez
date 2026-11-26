@@ -3,6 +3,10 @@
 .gitignore
 .gitattributes
 
+# Credenciais locais
+.env
+.env.*
+
 # IDEs
 .idea/
 .vscode/

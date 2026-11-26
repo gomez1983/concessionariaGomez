@@ -15,12 +15,13 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: catita01
+          # Banco descartável do CI, sem dados reais: senha neutra, que não é usada em nenhum outro lugar
+          MYSQL_ROOT_PASSWORD: ci-somente-teste
           MYSQL_DATABASE: concessionaria_test
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -pcatita01"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -pci-somente-teste"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
@@ -39,6 +40,8 @@ jobs:
       - name: Run Backend Tests & Verification
         env:
           TEST_DB_URL: jdbc:mysql://127.0.0.1:3306/concessionaria_test?createDatabaseIfNotExist=true&serverTimezone=UTC
+          TEST_DB_USERNAME: root
+          TEST_DB_PASSWORD: ci-somente-teste
         run: mvn clean verify -B
 
   frontend:

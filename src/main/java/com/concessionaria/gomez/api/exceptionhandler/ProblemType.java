@@ -12,6 +12,7 @@ public enum ProblemType {
     RECURSO_NAO_ENCONTRADO("/recurso-nao-encontrado", "Recurso não encontrado"),
     ENTIDADE_EM_USO("/entidade-em-uso", "Entidade em uso"),
     ACESSO_NEGADO("/acesso-negado", "Acesso comercial ou alçada não autorizada"),
+    NAO_AUTENTICADO("/nao-autenticado", "Autenticação necessária"),
     CONFLITO_NEGOCIACAO("/conflito-negociacao", "Conflito de revisão ou disponibilidade de estoque"),
     ERRO_NEGOCIO("/erro-negocio", "Violação de regra de negócio");
 

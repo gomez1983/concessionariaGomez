@@ -14,7 +14,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,13 +25,16 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 
+@Slf4j
 @RestController
 @RequestMapping("/carros/{carroId}/foto")
 @Tag(name = "Fotos de Veículos", description = "Upload, download e gerenciamento de fotos de veículos")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class CarroFotoController {
+
+    static final String MSG_FALHA_UPLOAD = "Falha ao processar o upload da imagem. Tente novamente.";
 
     private final CadastroCarroService cadastroCarroService;
     private final CatalogoFotoCarroService catalogoFotoCarroService;
@@ -50,11 +55,13 @@ public class CarroFotoController {
         foto.setTamanho(arquivo.getSize());
         foto.setNomeArquivo(arquivo.getOriginalFilename());
 
-        try {
-            FotoCarro fotoSalva = catalogoFotoCarroService.salvar(foto, arquivo.getInputStream());
+        try (InputStream dados = arquivo.getInputStream()) {
+            FotoCarro fotoSalva = catalogoFotoCarroService.salvar(foto, dados);
             return fotoCarroModelAssembler.toModel(fotoSalva);
         } catch (IOException e) {
-            throw new NegocioException("Falha ao processar o upload da imagem: " + e.getMessage());
+            // A mensagem da IOException pode trazer o caminho do arquivo temporário no servidor (SEC-09)
+            log.error("Falha ao ler o upload da foto do carro {}", carroId, e);
+            throw new NegocioException(MSG_FALHA_UPLOAD);
         }
     }
 
@@ -80,7 +87,10 @@ public class CarroFotoController {
 
             return ResponseEntity.ok()
                     .contentType(mediaTypeFoto)
-                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + foto.getNomeArquivo() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            ContentDisposition.inline().filename(foto.getNomeArquivo()).build().toString())
+                    // Explícito, como na galeria: não depende dos cabeçalhos padrão do Spring Security (SEC-10)
+                    .header("X-Content-Type-Options", "nosniff")
                     .body(new InputStreamResource(fotoRecuperada.getInputStream()));
         } catch (FotoCarroNaoEncontradaException e) {
             return ResponseEntity.notFound().build();

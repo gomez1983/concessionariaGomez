@@ -1,9 +1,11 @@
 package com.concessionaria.gomez;
 
+import com.concessionaria.gomez.api.exceptionhandler.ProblemType;
 import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.repository.CarroRepository;
 import com.concessionaria.gomez.util.DatabaseCleaner;
 import com.concessionaria.gomez.util.ResourceUtils;
+import com.concessionaria.gomez.util.TokensDeTeste;
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import org.hamcrest.Matchers;
@@ -38,6 +40,9 @@ public class CadastroCarroIT {
     @Autowired
     private CarroRepository carroRepository;
 
+    @Autowired
+    private TokensDeTeste tokens;
+
     private Carro carroMercedes;
     private Carro carroBMW;
     private int quantidadeCarrosCadastrados;
@@ -47,9 +52,12 @@ public class CadastroCarroIT {
 
     @BeforeEach
     public void setUp() {
+        RestAssured.reset();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
         RestAssured.port = port;
         RestAssured.basePath = "/carros";
+        // Padrão dos testes: GERENTE autenticado. Cenários de outros perfis sobrescrevem com .auth().oauth2(...)
+        RestAssured.authentication = RestAssured.oauth2(tokens.gerente());
 
         jsonCorretoCarroAudi = ResourceUtils.getContentFromResource(
                 "/json/correto/carro-audi.json");
@@ -150,6 +158,7 @@ public class CadastroCarroIT {
     @DisplayName("Deve retornar carros com valor de compra maior ou igual quando consultar com minValor")
     public void deveRetornarCarrosFiltradosPorMinValor_QuandoConsultarComParametroMinValor() {
         RestAssured.given()
+                .auth().oauth2(tokens.gerente())
                 .queryParam("minValor", 200000)
                 .accept(ContentType.JSON)
             .when()
@@ -165,6 +174,7 @@ public class CadastroCarroIT {
     @DisplayName("Deve retornar carros com valor de compra menor ou igual quando consultar com maxValor")
     public void deveRetornarCarrosFiltradosPorMaxValor_QuandoConsultarComParametroMaxValor() {
         RestAssured.given()
+                .auth().oauth2(tokens.gerente())
                 .queryParam("maxValor", 200000)
                 .accept(ContentType.JSON)
             .when()
@@ -180,6 +190,7 @@ public class CadastroCarroIT {
     @DisplayName("Deve retornar carros na faixa de valores quando consultar com minValor e maxValor (BETWEEN)")
     public void deveRetornarCarrosFiltradosPorFaixaDeValores_QuandoConsultarComMinValorEMaxValor() {
         RestAssured.given()
+                .auth().oauth2(tokens.gerente())
                 .queryParam("minValor", 100000)
                 .queryParam("maxValor", 200000)
                 .accept(ContentType.JSON)
@@ -214,6 +225,7 @@ public class CadastroCarroIT {
     @DisplayName("Deve retornar carros ordenados por valor decrescente quando passar sort=compra,desc")
     public void deveRetornarCarrosOrdenadosPorValorDecrescente_QuandoConsultarComSort() {
         RestAssured.given()
+                .auth().oauth2(tokens.gerente())
                 .queryParam("sort", "compra,desc")
                 .accept(ContentType.JSON)
             .when()
@@ -239,9 +251,43 @@ public class CadastroCarroIT {
     }
 
     @Test
+    @DisplayName("Deve retornar 400 (e não 500) quando ordenar por propriedade inexistente")
+    public void deveRetornarStatus400_QuandoOrdenarPorPropriedadeInexistente() {
+        for (String sort : new String[] {"foo,asc", "COMPRA,desc"}) {
+            RestAssured.given()
+                    .queryParam("sort", sort)
+                    .accept(ContentType.JSON)
+                .when()
+                    .get()
+                .then()
+                    .statusCode(HttpStatus.BAD_REQUEST.value())
+                    .body("title", equalTo(ProblemType.PARAMETRO_INVALIDO.getTitle()))
+                    .body("userMessage", Matchers.containsString("não pode ser usada para ordenar"));
+        }
+    }
+
+    @Test
+    @DisplayName("Deve montar os links HATEOAS com o endereço do proxy (X-Forwarded-*)")
+    public void deveMontarLinksComPrefixoDoProxy_QuandoReceberCabecalhosForwarded() {
+        RestAssured.given()
+                .header("X-Forwarded-Proto", "https")
+                .header("X-Forwarded-Host", "painel.exemplo.com")
+                .header("X-Forwarded-Prefix", "/api")
+                .pathParam("carroId", carroMercedes.getId())
+                .accept(ContentType.JSON)
+            .when()
+                .get("/{carroId}")
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("_links.self.href",
+                        equalTo("https://painel.exemplo.com/api/carros/" + carroMercedes.getId()));
+    }
+
+    @Test
     @DisplayName("Deve retornar status 200 e dados corretos quando consultar carro por ID existente com links HATEOAS e quilometragem")
     public void deveRetornarRespostasEStatusCorretos_QuandoConsultarCarroExistente() {
         RestAssured.given()
+                .auth().oauth2(tokens.gerente())
                 .pathParam("carroId", carroMercedes.getId())
                 .accept(ContentType.JSON)
             .when()
@@ -292,6 +338,7 @@ public class CadastroCarroIT {
     public void deveRetornarStatus201_QuandoCadastrarCarro() {
         // Audi compra 210000.00 -> venda sugerida 231000.00, km 15000
         RestAssured.given()
+                .auth().oauth2(tokens.gerente())
                 .body(jsonCorretoCarroAudi)
                 .contentType(ContentType.JSON)
                 .accept(ContentType.JSON)
@@ -326,6 +373,7 @@ public class CadastroCarroIT {
     @DisplayName("Deve retornar status 200 e dados atualizados ao atualizar carro existente via PUT")
     public void deveRetornarStatus200EObjetoAtualizado_QuandoAtualizarCarroExistente() {
         RestAssured.given()
+                .auth().oauth2(tokens.gerente())
                 .pathParam("carroId", carroMercedes.getId())
                 .body(jsonCorretoCarroMercedesAtualizado)
                 .contentType(ContentType.JSON)
@@ -393,6 +441,7 @@ public class CadastroCarroIT {
     @DisplayName("Deve retornar status 204 ao excluir carro existente e 404 ao buscá-lo em seguida")
     public void deveRetornarStatus204_QuandoExcluirCarroExistente() {
         RestAssured.given()
+                .auth().oauth2(tokens.admin())
                 .pathParam("carroId", carroBMW.getId())
                 .accept(ContentType.JSON)
             .when()
@@ -413,12 +462,104 @@ public class CadastroCarroIT {
     @DisplayName("Deve retornar status 404 ao tentar excluir carro com ID inexistente")
     public void deveRetornarStatus404_QuandoExcluirCarroInexistente() {
         RestAssured.given()
+                .auth().oauth2(tokens.admin())
                 .pathParam("carroId", CARRO_ID_INEXISTENTE)
                 .accept(ContentType.JSON)
             .when()
                 .delete("/{carroId}")
             .then()
                 .statusCode(HttpStatus.NOT_FOUND.value());
+    }
+
+    /*------------- Confidencialidade do custo de aquisição (SEC-04) ----------*/
+
+    @Test
+    @DisplayName("Deve ocultar o valor de compra para VENDEDOR e manter o preço de venda")
+    public void deveOcultarCompraParaVendedor_QuandoConsultarCarroExistente() {
+        RestAssured.given()
+                .auth().oauth2(tokens.vendedor())
+                .pathParam("carroId", carroMercedes.getId())
+                .accept(ContentType.JSON)
+            .when()
+                .get("/{carroId}")
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("compra", Matchers.nullValue())
+                .body("venda", equalTo(351890.00f));
+    }
+
+    @Test
+    @DisplayName("Deve ocultar o valor de compra na listagem para VENDEDOR")
+    public void deveOcultarCompraNaListagem_QuandoVendedor() {
+        RestAssured.given()
+                .auth().oauth2(tokens.vendedor())
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.OK.value())
+                .body("content.compra", Matchers.everyItem(Matchers.nullValue()));
+    }
+
+    @Test
+    @DisplayName("Deve retornar 401 sem token, inclusive com o antigo cabeçalho de perfil forjado")
+    public void deveRetornarStatus401_QuandoSemToken() {
+        RestAssured.given()
+                .auth().none()
+                .header("X-Operador-Perfil", "ADMIN")
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.UNAUTHORIZED.value())
+                .header("WWW-Authenticate", Matchers.startsWith("Bearer"))
+                .body("userMessage", Matchers.notNullValue());
+    }
+
+    @Test
+    @DisplayName("Deve retornar 403 quando VENDEDOR tentar excluir veículo e manter o registro")
+    public void deveRetornarStatus403_QuandoVendedorExcluirCarro() {
+        RestAssured.given()
+                .auth().oauth2(tokens.vendedor())
+                .pathParam("carroId", carroBMW.getId())
+            .when()
+                .delete("/{carroId}")
+            .then()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+
+        RestAssured.given()
+                .pathParam("carroId", carroBMW.getId())
+            .when()
+                .get("/{carroId}")
+            .then()
+                .statusCode(HttpStatus.OK.value());
+    }
+
+    @Test
+    @DisplayName("Deve recusar com 403 o filtro por valor de compra para VENDEDOR (evita busca binária do custo)")
+    public void deveRetornarStatus403_QuandoVendedorFiltrarPorValorDeCompra() {
+        RestAssured.given()
+                .auth().oauth2(tokens.vendedor())
+                .queryParam("minValor", 100000)
+                .queryParam("maxValor", 200000)
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.FORBIDDEN.value());
+    }
+
+    @Test
+    @DisplayName("Deve recusar com 403 a ordenação por valor de compra para VENDEDOR")
+    public void deveRetornarStatus403_QuandoVendedorOrdenarPorValorDeCompra() {
+        RestAssured.given()
+                .auth().oauth2(tokens.vendedor())
+                .queryParam("sort", "compra,desc")
+                .accept(ContentType.JSON)
+            .when()
+                .get()
+            .then()
+                .statusCode(HttpStatus.FORBIDDEN.value());
     }
 
     /*------------- Metodo para inserir massas de dados para os testes rodarem ----------*/

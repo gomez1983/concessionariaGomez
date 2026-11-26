@@ -1,6 +1,7 @@
 package com.concessionaria.gomez.api.exceptionhandler;
 
 import com.concessionaria.gomez.domain.exception.AcessoComercialNegadoException;
+import com.concessionaria.gomez.domain.exception.AutenticacaoException;
 import com.concessionaria.gomez.domain.exception.ConflitoNegociacaoException;
 import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
 import com.concessionaria.gomez.domain.exception.EntidadeNaoEncontradaException;
@@ -9,15 +10,19 @@ import com.fasterxml.jackson.databind.JsonMappingException.Reference;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.fasterxml.jackson.databind.exc.PropertyBindingException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -32,6 +37,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @ControllerAdvice
 @RequiredArgsConstructor
 public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
@@ -82,7 +88,8 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         ProblemType problemType = ProblemType.ERRO_DE_SISTEMA;
         String detail = MSG_ERRO_GENERICA_USUARIO_FINAL;
 
-        ex.printStackTrace();
+        // A causa vai só para o log; o cliente recebe a mensagem genérica (SEC-09)
+        log.error("Erro não tratado em {}", request.getDescription(false), ex);
 
         Problem problem = createProblemBuilder(status, problemType, detail)
                 .userMessage(detail)
@@ -189,6 +196,25 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(ex, problem, headers, status, request);
     }
 
+    /**
+     * {@code ?sort=} com uma propriedade inexistente (por exemplo {@code sort=foo} ou {@code sort=COMPRA}):
+     * erro do cliente, não do sistema.
+     */
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<?> handlePropertyReference(PropertyReferenceException ex, WebRequest request) {
+
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+        ProblemType problemType = ProblemType.PARAMETRO_INVALIDO;
+        String detail = String.format("A propriedade '%s' não pode ser usada para ordenar ou filtrar. "
+                + "Corrija o parâmetro e tente novamente.", ex.getPropertyName());
+
+        Problem problem = createProblemBuilder(status, problemType, detail)
+                .userMessage(detail)
+                .build();
+
+        return handleExceptionInternal(ex, problem, new HttpHeaders(), status, request);
+    }
+
     @ExceptionHandler(EntidadeNaoEncontradaException.class)
     public ResponseEntity<?> handleEntidadeNaoEncontrada(EntidadeNaoEncontradaException ex,
                                                          WebRequest request) {
@@ -224,6 +250,37 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
         HttpStatus status = HttpStatus.FORBIDDEN;
         ProblemType problemType = ProblemType.ACESSO_NEGADO;
         String detail = ex.getMessage();
+
+        Problem problem = createProblemBuilder(status, problemType, detail)
+                .userMessage(detail)
+                .build();
+
+        return handleExceptionInternal(ex, problem, new HttpHeaders(), status, request);
+    }
+
+    @ExceptionHandler({AutenticacaoException.class, AuthenticationException.class})
+    public ResponseEntity<?> handleAutenticacao(RuntimeException ex, WebRequest request) {
+
+        HttpStatus status = HttpStatus.UNAUTHORIZED;
+        ProblemType problemType = ProblemType.NAO_AUTENTICADO;
+        // Mensagens de AuthenticationException são técnicas; as de AutenticacaoException já são para o usuário
+        String detail = ex instanceof AutenticacaoException
+                ? ex.getMessage()
+                : AutenticacaoException.MSG_SESSAO_EXPIRADA;
+
+        Problem problem = createProblemBuilder(status, problemType, detail)
+                .userMessage(detail)
+                .build();
+
+        return handleExceptionInternal(ex, problem, new HttpHeaders(), status, request);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<?> handleAccessDenied(AccessDeniedException ex, WebRequest request) {
+
+        HttpStatus status = HttpStatus.FORBIDDEN;
+        ProblemType problemType = ProblemType.ACESSO_NEGADO;
+        String detail = "Seu perfil não tem permissão para esta operação.";
 
         Problem problem = createProblemBuilder(status, problemType, detail)
                 .userMessage(detail)

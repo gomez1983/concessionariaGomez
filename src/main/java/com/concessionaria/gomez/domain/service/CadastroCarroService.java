@@ -3,8 +3,10 @@ package com.concessionaria.gomez.domain.service;
 import com.concessionaria.gomez.domain.exception.CarroNaoEncontradoException;
 import com.concessionaria.gomez.domain.exception.EntidadeEmUsoException;
 import com.concessionaria.gomez.domain.exception.EntidadeNaoEncontradaException;
+import com.concessionaria.gomez.domain.exception.NegocioException;
 import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.repository.CarroRepository;
+import com.concessionaria.gomez.domain.repository.VendaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -26,6 +28,7 @@ public class CadastroCarroService {
     /********Fim de mensagens CONSTANTS *********/
 
     private final CarroRepository carroRepository;
+    private final VendaRepository vendaRepository;
 
     @Transactional
     public Carro salvar(Carro carro) {
@@ -51,6 +54,14 @@ public class CadastroCarroService {
     @Transactional
     public void ativar(Long carroId) {
         Carro carroAtual = buscarOuFalhar(carroId);
+
+        // Um veículo com venda vigente só volta ao estoque pelo cancelamento dessa venda.
+        // A checagem não depende da disponibilidade comercial: dados legados podem estar inconsistentes.
+        if (vendaRepository.existsByCarroIdAndCanceladaFalse(carroId)) {
+            throw new NegocioException(String.format(
+                    "O veículo de código %d possui uma venda vigente. Para devolvê-lo ao estoque, cancele a venda.",
+                    carroId));
+        }
 
         carroAtual.ativar();
     }

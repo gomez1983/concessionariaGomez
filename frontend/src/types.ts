@@ -1,5 +1,19 @@
 export type PerfilOperador = 'VENDEDOR' | 'GERENTE' | 'ADMIN';
 
+export interface UsuarioLogado {
+  nome: string;
+  email: string;
+  perfil: PerfilOperador;
+}
+
+/** Resposta de /auth/login e /auth/refresh. O refresh token vem só no cookie HttpOnly. */
+export interface TokenAcesso {
+  accessToken: string;
+  tokenType: 'Bearer';
+  expiraEm: string;
+  usuario: UsuarioLogado;
+}
+
 export interface Carro {
   id: number;
   marca: string;

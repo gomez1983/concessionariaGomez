@@ -13,16 +13,20 @@ COPY . .
 RUN npm run build
 
 # ==========================================
-# Etapa 2: Servidor Nginx ultra-leve
+# Etapa 2: Nginx sem privilégios de root (SEC-16)
 # ==========================================
-FROM nginx:alpine
-WORKDIR /usr/share/nginx/html
+# O processo roda com o usuário nginx (UID 101) e escuta na porta 8080, porque portas abaixo de
+# 1024 exigem root. O docker-compose.yml publica 127.0.0.1:80 -> 8080.
+FROM nginxinc/nginx-unprivileged:alpine
 
-# Limpa o conteúdo padrão e copia os assets gerados
-RUN rm -rf ./*
-COPY --from=builder /app/dist .
+# Copiar os arquivos exige root; eles ficam do root e só leitura para o nginx
+USER root
+RUN rm -rf /usr/share/nginx/html/*
+COPY --from=builder /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx/ /etc/nginx/snippets/
+USER 101
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

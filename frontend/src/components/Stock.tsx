@@ -21,7 +21,10 @@ import {
   X,
 } from 'lucide-react';
 import type { Carro, Filters, PerfilOperador, Sort, Venda } from '../types';
-import { allPages, api, carroQuery, getOperadorContext, photoUrl } from '../lib/api';
+import { allPages, api, carroQuery, photoPath } from '../lib/api';
+import { useUsuario } from '../lib/auth';
+import { ehAdmin, ehGestao } from '../lib/permissoes';
+import { FotoAutenticada } from './FotoAutenticada';
 import { currency, emptyFilters, number } from '../lib/estoque';
 import { useResource } from '../lib/useResource';
 import { Button } from './ui/button';
@@ -66,16 +69,27 @@ export function Stock({
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
   const [busyId, setBusyId] = useState<number>();
   const [actionError, setActionError] = useState('');
-  const perfil: PerfilOperador = getOperadorContext().perfil;
+  const perfil: PerfilOperador = useUsuario().perfil;
+  // Filtrar ou ordenar pelo custo de aquisição é restrito a GERENTE/ADMIN (a API responde 403).
+  const podeVerCusto = ehGestao(perfil);
+  // Cadastro, edição e ativação de veículos: GERENTE/ADMIN; exclusão definitiva: ADMIN
+  const podeGerir = ehGestao(perfil);
+  const podeExcluir = ehAdmin(perfil);
+  const effectiveFilters: Filters = podeVerCusto
+    ? filters
+    : { ...filters, minValor: '', maxValor: '' };
+  const effectiveSort: Sort = podeVerCusto || !sort.startsWith('valor') ? sort : 'recentes';
 
   useEffect(() => setPage(0), [search]);
-  const query = carroQuery({ ...filters, search }, page, sort);
+  const query = carroQuery({ ...effectiveFilters, search }, page, effectiveSort);
   const invalid =
-    (filters.minValor !== '' && filters.maxValor !== '' && +filters.minValor > +filters.maxValor) ||
+    (effectiveFilters.minValor !== '' &&
+      effectiveFilters.maxValor !== '' &&
+      +effectiveFilters.minValor > +effectiveFilters.maxValor) ||
     (filters.minKm !== '' && filters.maxKm !== '' && +filters.minKm > +filters.maxKm);
   const resource = useResource((signal) => api.carros(query, signal), [query, revision]);
   const vehicles = resource.data?.content ?? [];
-  const count = Object.values({ ...filters, search }).filter(Boolean).length;
+  const count = Object.values({ ...effectiveFilters, search }).filter(Boolean).length;
 
   function filter(key: keyof Filters, value: string) {
     setFilters((previous) => ({ ...previous, [key]: value }));
@@ -141,35 +155,41 @@ export function Stock({
       >
         <Camera size={16} />
       </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        aria-label={`Editar ${vehicle.marca} ${vehicle.modelo}`}
-        title="Editar veículo"
-        onClick={() => edit(vehicle)}
-      >
-        <Pencil size={15} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        disabled={busyId !== undefined}
-        aria-label={`${vehicle.ativo ? 'Inativar' : 'Ativar'} ${vehicle.marca} ${vehicle.modelo}`}
-        title={vehicle.ativo ? 'Inativar' : 'Ativar'}
-        onClick={() => void toggle(vehicle)}
-      >
-        <Power size={15} />
-      </Button>
-      <Button
-        size="icon"
-        variant="ghost"
-        className="delete-action"
-        aria-label={`Excluir ${vehicle.marca} ${vehicle.modelo}`}
-        title="Excluir veículo"
-        onClick={() => remove(vehicle)}
-      >
-        <Trash2 size={15} />
-      </Button>
+      {podeGerir && (
+        <>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={`Editar ${vehicle.marca} ${vehicle.modelo}`}
+            title="Editar veículo"
+            onClick={() => edit(vehicle)}
+          >
+            <Pencil size={15} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            disabled={busyId !== undefined}
+            aria-label={`${vehicle.ativo ? 'Inativar' : 'Ativar'} ${vehicle.marca} ${vehicle.modelo}`}
+            title={vehicle.ativo ? 'Inativar' : 'Ativar'}
+            onClick={() => void toggle(vehicle)}
+          >
+            <Power size={15} />
+          </Button>
+        </>
+      )}
+      {podeExcluir && (
+        <Button
+          size="icon"
+          variant="ghost"
+          className="delete-action"
+          aria-label={`Excluir ${vehicle.marca} ${vehicle.modelo}`}
+          title="Excluir veículo"
+          onClick={() => remove(vehicle)}
+        >
+          <Trash2 size={15} />
+        </Button>
+      )}
     </div>
   );
   return (
@@ -249,29 +269,31 @@ export function Stock({
                 { key: 'minKm', label: 'Km mínimo' },
                 { key: 'maxKm', label: 'Km máximo' },
               ] as { key: keyof Filters; label: string }[]
-            ).map((field) => (
-              <label key={field.key}>
-                {field.label}
-                {field.key.includes('Valor') ? (
-                  <MoneyInput
-                    aria-label={field.label}
-                    value={filters[field.key]}
-                    valueIsNumericString
-                    placeholder="Sem limite"
-                    onValueChange={(values) => filter(field.key, values.value)}
-                  />
-                ) : (
-                  <input
-                    type="number"
-                    min="0"
-                    step={field.key.includes('Valor') ? '.01' : '1'}
-                    placeholder="Sem limite"
-                    value={filters[field.key]}
-                    onChange={(event) => filter(field.key, event.target.value)}
-                  />
-                )}
-              </label>
-            ))}
+            )
+              .filter((field) => podeVerCusto || !field.key.includes('Valor'))
+              .map((field) => (
+                <label key={field.key}>
+                  {field.label}
+                  {field.key.includes('Valor') ? (
+                    <MoneyInput
+                      aria-label={field.label}
+                      value={filters[field.key]}
+                      valueIsNumericString
+                      placeholder="Sem limite"
+                      onValueChange={(values) => filter(field.key, values.value)}
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      min="0"
+                      step={field.key.includes('Valor') ? '.01' : '1'}
+                      placeholder="Sem limite"
+                      value={filters[field.key]}
+                      onChange={(event) => filter(field.key, event.target.value)}
+                    />
+                  )}
+                </label>
+              ))}
             {invalid && (
               <p className="form-error range-error">O mínimo deve ser menor ou igual ao máximo.</p>
             )}
@@ -293,15 +315,15 @@ export function Stock({
             Ordenar por:
             <select
               aria-label="Ordenar veículos"
-              value={sort}
+              value={effectiveSort}
               onChange={(event) => {
                 setSort(event.target.value as Sort);
                 setPage(0);
               }}
             >
               <option value="recentes">Mais recentes</option>
-              <option value="valor-asc">Menor valor de compra</option>
-              <option value="valor-desc">Maior valor de compra</option>
+              {podeVerCusto && <option value="valor-asc">Menor valor de compra</option>}
+              {podeVerCusto && <option value="valor-desc">Maior valor de compra</option>}
               <option value="ano-desc">Ano mais novo</option>
             </select>
           </label>
@@ -380,8 +402,7 @@ export function Stock({
                   </div>
                   <div className="sale-price">
                     <span>
-                      Compra:{' '}
-                      {vehicle.compra != null ? currency(vehicle.compra) : 'Restrito'}
+                      Compra: {vehicle.compra != null ? currency(vehicle.compra) : 'Restrito'}
                     </span>
                     <strong>
                       <small>Venda:</small> {currency(vehicle.venda ?? 0)}
@@ -482,11 +503,15 @@ export function Stock({
             setViewing(null);
             setGallery(target);
           }}
-          onEdit={() => {
-            const target = viewing;
-            setViewing(null);
-            edit(target);
-          }}
+          onEdit={
+            podeGerir
+              ? () => {
+                  const target = viewing;
+                  setViewing(null);
+                  edit(target);
+                }
+              : undefined
+          }
           onSimulateProposal={() => {
             const target = viewing;
             setViewing(null);
@@ -507,7 +532,7 @@ export function Stock({
         />
       )}
 
-      {(formOpen || formRequested) && (
+      {podeGerir && (formOpen || formRequested) && (
         <VehicleForm
           key={editing?.id ?? 'new'}
           vehicle={editing}
@@ -554,23 +579,27 @@ function VehicleDetailsModal({
   revision: number;
   onClose: () => void;
   onOpenGallery: () => void;
-  onEdit: () => void;
+  /** Ausente quando o perfil não pode editar veículos. */
+  onEdit?: () => void;
   onSimulateProposal: () => void;
 }) {
   const [selectedFotoIdx, setSelectedFotoIdx] = useState(0);
 
-  const details = useResource(async (signal) => {
-    const [fotos, propostasPage, todasVendas] = await Promise.all([
-      api.fotos(vehicle.id, signal),
-      api.propostasPorCarro(vehicle.id, signal),
-      allPages<Venda>('vendas', signal),
-    ]);
-    return {
-      fotos,
-      propostas: propostasPage.content,
-      vendas: todasVendas.filter((v) => v.carro.id === vehicle.id),
-    };
-  }, [vehicle.id, revision]);
+  const details = useResource(
+    async (signal) => {
+      const [fotos, propostasPage, todasVendas] = await Promise.all([
+        api.fotos(vehicle.id, signal),
+        api.propostasPorCarro(vehicle.id, signal),
+        allPages<Venda>('vendas', signal),
+      ]);
+      return {
+        fotos,
+        propostas: propostasPage.content,
+        vendas: todasVendas.filter((v) => v.carro.id === vehicle.id),
+      };
+    },
+    [vehicle.id, revision],
+  );
 
   const fotos = details.data?.fotos ?? [];
   const activeFoto = fotos[selectedFotoIdx] ?? fotos[0];
@@ -646,8 +675,8 @@ function VehicleDetailsModal({
           {fotos.length > 0 && activeFoto ? (
             <div>
               <div style={{ position: 'relative', height: '300px', background: '#0b1120' }}>
-                <img
-                  src={photoUrl(vehicle.id, activeFoto, revision)}
+                <FotoAutenticada
+                  path={photoPath(vehicle.id, activeFoto, revision)}
                   alt={activeFoto.descricao || `${vehicle.marca} ${vehicle.modelo}`}
                   style={{
                     width: '100%',
@@ -762,10 +791,15 @@ function VehicleDetailsModal({
                       background: '#0f172a',
                     }}
                   >
-                    <img
-                      src={photoUrl(vehicle.id, f, revision)}
+                    <FotoAutenticada
+                      path={photoPath(vehicle.id, f, revision)}
                       alt={f.descricao || `Foto ${index + 1}`}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
                     />
                   </button>
                 ))}
@@ -832,7 +866,8 @@ function VehicleDetailsModal({
             <div>
               <span className="muted">Ano / Condição: </span>
               <strong>
-                {vehicle.ano} · {vehicle.zeroKm ? '0 km (Novo)' : `${number(vehicle.quilometragem)} km`}
+                {vehicle.ano} ·{' '}
+                {vehicle.zeroKm ? '0 km (Novo)' : `${number(vehicle.quilometragem)} km`}
               </strong>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -886,12 +921,15 @@ function VehicleDetailsModal({
               <div>
                 <span className="muted">Margem bruta projetada: </span>
                 <strong style={{ color: '#10b981' }}>
-                  {currency(margemBrutaProjetada)} (
-                  {margemPercentualSobreVenda?.toFixed(2)}% sobre venda)
+                  {currency(margemBrutaProjetada)} ({margemPercentualSobreVenda?.toFixed(2)}% sobre
+                  venda)
                 </strong>
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem' }} className="muted">
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.78rem' }}
+              className="muted"
+            >
               <ShieldCheck size={13} />
               Política comercial da loja aplicada nas simulações.
             </div>
@@ -922,7 +960,9 @@ function VehicleDetailsModal({
                 Nenhuma proposta registrada para este veículo até o momento.
               </p>
             ) : (
-              <div style={{ display: 'grid', gap: '0.4rem', maxHeight: '140px', overflowY: 'auto' }}>
+              <div
+                style={{ display: 'grid', gap: '0.4rem', maxHeight: '140px', overflowY: 'auto' }}
+              >
                 {details.data.propostas.map((prop) => (
                   <div
                     key={prop.id}
@@ -976,8 +1016,12 @@ function VehicleDetailsModal({
                   style={{
                     padding: '0.6rem 0.8rem',
                     borderRadius: '0.55rem',
-                    border: '1px solid rgba(16, 185, 129, 0.35)',
-                    background: 'rgba(16, 185, 129, 0.08)',
+                    border: v.cancelada
+                      ? '1px solid rgba(120, 120, 120, 0.3)'
+                      : '1px solid rgba(16, 185, 129, 0.35)',
+                    background: v.cancelada
+                      ? 'rgba(120, 120, 120, 0.06)'
+                      : 'rgba(16, 185, 129, 0.08)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -986,9 +1030,13 @@ function VehicleDetailsModal({
                 >
                   <div>
                     <strong>Venda #{v.id}</strong> · Comprador: <strong>{v.cliente.nome}</strong>
+                    {v.cancelada && <span className="status-badge inactive">Cancelada</span>}
                     <div className="muted" style={{ fontSize: '0.76rem' }}>
                       Data: {new Date(v.dataVenda).toLocaleDateString('pt-BR')}{' '}
                       {v.observacoes ? `· ${v.observacoes}` : ''}
+                      {v.cancelada && v.motivoCancelamento
+                        ? ` · Motivo: ${v.motivoCancelamento}`
+                        : ''}
                     </div>
                   </div>
                   <strong>{currency(v.valorVenda)}</strong>
@@ -1000,13 +1048,20 @@ function VehicleDetailsModal({
 
         <div
           className="form-footer"
-          style={{ marginTop: '0.75rem', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}
+          style={{
+            marginTop: '0.75rem',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.5rem',
+          }}
         >
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <Button type="button" variant="outline" onClick={onEdit}>
-              <Pencil size={15} />
-              Editar veículo
-            </Button>
+            {onEdit && (
+              <Button type="button" variant="outline" onClick={onEdit}>
+                <Pencil size={15} />
+                Editar veículo
+              </Button>
+            )}
             <Button type="button" variant="outline" onClick={onOpenGallery}>
               <Camera size={15} />
               Fotos ({fotos.length})

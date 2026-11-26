@@ -1,7 +1,10 @@
 import { useState } from 'react';
-import { photoUrl } from '../lib/api';
+import { photoPath } from '../lib/api';
+import { useImagemAutenticada } from '../lib/useImagemAutenticada';
 import { CarIllustration } from './CarIllustration';
 import { referencePhoto } from '../lib/referencePhotos';
+
+/** Foto principal do veículo; sem foto (404) ou com falha, cai na imagem de referência e depois na ilustração. */
 export function VehicleImage({
   id,
   marca,
@@ -15,28 +18,30 @@ export function VehicleImage({
   revision: number;
   large?: boolean;
 }) {
-  const [failed, setFailed] = useState('');
+  const foto = useImagemAutenticada(photoPath(id, undefined, revision));
   const [failedReference, setFailedReference] = useState('');
-  const url = photoUrl(id, undefined, revision);
   const reference = referencePhoto(marca, modelo);
-  const isReference = failed === url;
-  const src = isReference ? reference?.image : url;
-  return !src || (isReference && failedReference === src) ? (
-    <CarIllustration marca={marca} large={large} />
-  ) : (
+
+  if (foto.status === 'pronta') {
+    return (
+      <img className="vehicle-photo" src={foto.src} alt={`${marca} ${modelo}, foto principal`} />
+    );
+  }
+  if (foto.status === 'carregando') {
+    return <span className="vehicle-photo" aria-hidden="true" />;
+  }
+  const src = reference?.image;
+  if (!src || failedReference === src) return <CarIllustration marca={marca} large={large} />;
+  return (
     <>
       <img
         className="vehicle-photo"
         src={src}
-        alt={
-          isReference
-            ? `Imagem de referência de ${marca} ${modelo}`
-            : `${marca} ${modelo}, foto principal`
-        }
+        alt={`Imagem de referência de ${marca} ${modelo}`}
         loading="lazy"
-        onError={() => (isReference ? setFailedReference(src) : setFailed(url))}
+        onError={() => setFailedReference(src)}
       />
-      {isReference && large && <span className="reference-badge">Imagem de referência</span>}
+      {large && <span className="reference-badge">Imagem de referência</span>}
     </>
   );
 }

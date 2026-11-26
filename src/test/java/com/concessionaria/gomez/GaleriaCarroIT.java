@@ -2,7 +2,9 @@ package com.concessionaria.gomez;
 
 import com.concessionaria.gomez.domain.model.Carro;
 import com.concessionaria.gomez.domain.repository.CarroRepository;
+import com.concessionaria.gomez.domain.model.PerfilOperadorComercial;
 import com.concessionaria.gomez.util.DatabaseCleaner;
+import com.concessionaria.gomez.util.TokensDeTeste;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,6 +17,8 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -22,6 +26,7 @@ import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.nio.file.Files;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -29,7 +34,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @TestPropertySource("/application-test.properties")
 class GaleriaCarroIT {
-    @Autowired MockMvc mvc;
+    @Autowired WebApplicationContext contexto;
+    @Autowired TokensDeTeste tokens;
+    MockMvc mvc;
     @Autowired CarroRepository carros;
     @Autowired com.concessionaria.gomez.domain.repository.ClienteRepository clientes;
     @Autowired DatabaseCleaner cleaner;
@@ -41,6 +48,10 @@ class GaleriaCarroIT {
     Long carroId;
 
     @BeforeEach void setup() {
+        // Toda requisição sai como GERENTE autenticado, salvo quando o teste informa outro Authorization
+        mvc = MockMvcBuilders.webAppContextSetup(contexto).apply(springSecurity())
+                .defaultRequest(get("/").header("Authorization", tokens.bearer(PerfilOperadorComercial.GERENTE)))
+                .build();
         cleaner.clearTables();
         Carro carro = new Carro();
         carro.setMarca("Teste"); carro.setModelo("Galeria"); carro.setAno(2024);
@@ -63,7 +74,9 @@ class GaleriaCarroIT {
         mvc.perform(get("/carros/{id}/fotos/{fotoId}/conteudo", carroId + 1, fotoId)).andExpect(status().isNotFound());
         mvc.perform(multipart("/carros/{id}/foto", carroId).file(arquivo(segunda)).param("descricao", "Nova principal")
                 .with(request -> { request.setMethod("PUT"); return request; })).andExpect(status().isOk());
-        mvc.perform(get("/carros/{id}/foto", carroId).accept("image/png")).andExpect(content().bytes(segunda));
+        mvc.perform(get("/carros/{id}/foto", carroId).accept("image/png")).andExpect(content().bytes(segunda))
+                .andExpect(header().stringValues("X-Content-Type-Options", "nosniff"))
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.startsWith("inline; filename=\"")));
         mvc.perform(delete("/carros/{id}/fotos/{fotoId}", carroId, fotoId)).andExpect(status().isNoContent());
         mvc.perform(get("/carros/{id}/fotos", carroId)).andExpect(jsonPath("$.length()").value(1));
         mvc.perform(delete("/carros/{id}/foto", carroId)).andExpect(status().isNoContent());
@@ -82,6 +95,14 @@ class GaleriaCarroIT {
                 .andExpect(jsonPath("$.totalVeiculos").value(1)).andExpect(jsonPath("$.ativos").value(1))
                 .andExpect(jsonPath("$.valorInvestido").value(12345.67)).andExpect(jsonPath("$.vendaSugerida").value(13580.24))
                 .andExpect(jsonPath("$.margemPrevista").value(1234.57));
+    }
+
+    @Test void deveOcultarCustosDoResumoParaVendedor() throws Exception {
+        mvc.perform(get("/dashboard").header("Authorization", tokens.bearer(PerfilOperadorComercial.VENDEDOR)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalVeiculos").value(1)).andExpect(jsonPath("$.vendaSugerida").value(13580.24))
+                .andExpect(jsonPath("$.valorInvestido").doesNotExist())
+                .andExpect(jsonPath("$.margemPrevista").doesNotExist());
     }
 
     @Test void deveCompararDocumentosComESemMascaraInclusiveNaEdicao() {

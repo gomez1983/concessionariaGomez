@@ -3,6 +3,7 @@ package com.concessionaria.gomez.api.controller;
 import com.concessionaria.gomez.api.assembler.VendaModelAssembler;
 import com.concessionaria.gomez.api.model.VendaModel;
 import com.concessionaria.gomez.api.model.input.VendaInput;
+import com.concessionaria.gomez.core.security.OperadorAutenticado;
 import com.concessionaria.gomez.domain.model.Venda;
 import com.concessionaria.gomez.domain.repository.VendaRepository;
 import com.concessionaria.gomez.domain.service.EmissaoVendaService;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/vendas")
 @Tag(name = "Vendas", description = "Gerenciamento e emissão de vendas de veículos")
-@CrossOrigin(origins = "*")
 @RequiredArgsConstructor
 public class VendaController {
 
@@ -47,13 +47,15 @@ public class VendaController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Registra uma nova venda (por conversão de proposta autorizada ou emissão direta) e inativa o carro no estoque")
-    public VendaModel realizarVenda(@RequestBody @Valid VendaInput vendaInput) {
+    public VendaModel realizarVenda(@RequestBody @Valid VendaInput vendaInput, OperadorAutenticado operador) {
         Venda venda;
         if (vendaInput.getPropostaId() != null && gestaoPropostaService != null) {
             venda = gestaoPropostaService.converterEmVenda(
                     vendaInput.getPropostaId(),
                     vendaInput.getSequenciaRevisaoAutorizada(),
-                    vendaInput.getObservacoes());
+                    vendaInput.getObservacoes(),
+                    operador.email(),
+                    operador.perfil());
         } else {
             venda = emissaoVendaService.realizarVenda(
                     vendaInput.getCarroId(),
@@ -84,15 +86,18 @@ public class VendaController {
             @PathVariable Long vendaId,
             @RequestParam String motivo,
             @RequestParam(defaultValue = "true") boolean reativarVeiculo,
-            @RequestHeader(value = "X-Operador-Id", required = false) String operadorId) {
+            OperadorAutenticado operador) {
 
-        Venda venda = emissaoVendaService.cancelarComAuditoria(vendaId, motivo, operadorId, reativarVeiculo);
+        Venda venda = emissaoVendaService.cancelarComAuditoria(vendaId, motivo, operador.email(), reativarVeiculo);
         return vendaModelAssembler.toModel(venda);
     }
 
     @DeleteMapping("/{vendaId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Cancela uma venda e reativa o veículo no estoque")
+    @Operation(summary = "Exclui uma venda legada e reativa o veículo no estoque (sem trilha de auditoria)",
+            description = "Obsoleto: use POST /vendas/{vendaId}/cancelamento-auditado. Recusa vendas canceladas "
+                    + "e vendas originadas de proposta.",
+            deprecated = true)
     public void cancelar(@PathVariable Long vendaId) {
         emissaoVendaService.cancelar(vendaId);
     }

@@ -7,7 +7,6 @@ import type {
   Filters,
   Foto,
   Page,
-  PerfilOperador,
   PropostaComercial,
   PropostaComercialInput,
   SimulacaoProposta,
@@ -17,25 +16,15 @@ import type {
   VendaInput,
 } from '../types';
 
-export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '/api').replace(/\/$/, '');
+import {
+  API_BASE,
+  getAccessToken,
+  MSG_SESSAO_EXPIRADA,
+  renovarSessao,
+  sessaoExpirada,
+} from './session';
 
-let currentPerfil: PerfilOperador = 'GERENTE';
-let currentOperadorId = 'gerente@concessionariagomez.com.br';
-
-export function setOperadorContext(perfil: PerfilOperador, operadorId?: string) {
-  currentPerfil = perfil;
-  currentOperadorId =
-    operadorId ||
-    (perfil === 'VENDEDOR'
-      ? 'vendedor@concessionariagomez.com.br'
-      : perfil === 'ADMIN'
-        ? 'admin@concessionariagomez.com.br'
-        : 'gerente@concessionariagomez.com.br');
-}
-
-export function getOperadorContext() {
-  return { perfil: currentPerfil, operadorId: currentOperadorId };
-}
+export { API_BASE };
 
 export class ApiError extends Error {
   constructor(
@@ -50,20 +39,14 @@ export function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : 'Não foi possível concluir a operação.';
 }
 
-export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function enviar(path: string, init: RequestInit, token: string | null) {
   const headers = new Headers(init.headers);
-  headers.set('Accept', 'application/json');
-  if (!headers.has('X-Operador-Perfil')) {
-    headers.set('X-Operador-Perfil', currentPerfil);
-  }
-  if (!headers.has('X-Operador-Id')) {
-    headers.set('X-Operador-Id', currentOperadorId);
-  }
+  if (!headers.has('Accept')) headers.set('Accept', 'application/json');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (init.body && !(init.body instanceof FormData))
     headers.set('Content-Type', 'application/json');
-  let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`, {
+    return await fetch(`${API_BASE}${path}`, {
       ...init,
       headers,
       signal: init.signal
@@ -76,12 +59,38 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
       'Não foi possível acessar a API. Verifique se o Spring Boot e o banco de dados estão disponíveis.',
     );
   }
+}
+
+/**
+ * Envia com o access token. Em 401, renova a sessão uma única vez (renovação compartilhada entre
+ * requisições simultâneas) e repete a requisição; se a renovação falhar, encerra a sessão local.
+ */
+export async function fetchAutenticado(path: string, init: RequestInit = {}): Promise<Response> {
+  const tokenUsado = getAccessToken();
+  const response = await enviar(path, init, tokenUsado);
+  if (response.status !== 401) return response;
+
+  const tokenAtual = getAccessToken();
+  // Outra requisição já renovou enquanto esta estava em voo: basta repetir com o token novo
+  const renovado = tokenAtual !== null && tokenAtual !== tokenUsado ? true : await renovarSessao();
+  if (!renovado) {
+    sessaoExpirada();
+    throw new ApiError(MSG_SESSAO_EXPIRADA, 401);
+  }
+  return enviar(path, init, getAccessToken());
+}
+
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const response = await fetchAutenticado(path, init);
   if (!response.ok) {
     const problem = await response.json().catch(() => null);
     const fields = Object.fromEntries(
       (problem?.objects ?? [])
         .filter((f: { name?: string }) => f.name)
-        .map((f: { name: string; userMessage: string }) => [f.name, userMessageOrDefault(f.userMessage)]),
+        .map((f: { name: string; userMessage: string }) => [
+          f.name,
+          userMessageOrDefault(f.userMessage),
+        ]),
     );
     throw new ApiError(
       problem?.userMessage ||
@@ -97,6 +106,22 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   }
   if (response.status === 204) return undefined as T;
   return response.json();
+}
+
+/**
+ * Baixa uma imagem protegida (o <img src> não envia o cabeçalho Authorization).
+ * Devolve null quando o veículo não tem a foto (404), para a tela mostrar a imagem de referência.
+ */
+export async function imagem(path: string, signal?: AbortSignal): Promise<Blob | null> {
+  // image/* primeiro escolhe o conteúdo binário; */* deixa o erro chegar como Problem JSON
+  const response = await fetchAutenticado(path, {
+    signal,
+    headers: { Accept: 'image/*,*/*;q=0.1' },
+  });
+  if (response.status === 404) return null;
+  if (!response.ok)
+    throw new ApiError(`Não foi possível carregar a imagem (${response.status}).`, response.status);
+  return response.blob();
 }
 
 function userMessageOrDefault(msg?: string) {
@@ -141,8 +166,17 @@ export const api = {
     }),
   toggle: (collection: 'carros' | 'clientes', id: number, ativo: boolean) =>
     request<void>(`/${collection}/${id}/ativo`, { method: ativo ? 'DELETE' : 'PUT' }),
-  remove: (collection: 'carros' | 'clientes' | 'vendas', id: number) =>
+  remove: (collection: 'carros' | 'clientes', id: number) =>
     request<void>(`/${collection}/${id}`, { method: 'DELETE' }),
+  /** Cancelamento auditado: preserva a venda com motivo, responsável e data (substitui o DELETE legado). */
+  cancelarVenda: (id: number, motivo: string, reativarVeiculo = true) =>
+    request<Venda>(
+      `/vendas/${id}/cancelamento-auditado?${new URLSearchParams({
+        motivo,
+        reativarVeiculo: String(reativarVeiculo),
+      })}`,
+      { method: 'POST' },
+    ),
   clientes: (page: number, signal?: AbortSignal) =>
     request<Page<Cliente>>(`/clientes?page=${page}&size=10&sort=id,desc`, { signal }),
   saveCliente: (input: ClienteInput, id?: number) =>
@@ -168,10 +202,9 @@ export const api = {
       { signal },
     ),
   propostasPorCarro: (carroId: number, signal?: AbortSignal) =>
-    request<Page<PropostaComercial>>(
-      `/propostas?page=0&size=50&sort=id,desc&carroId=${carroId}`,
-      { signal },
-    ),
+    request<Page<PropostaComercial>>(`/propostas?page=0&size=50&sort=id,desc&carroId=${carroId}`, {
+      signal,
+    }),
   simularProposta: (input: PropostaComercialInput, signal?: AbortSignal) =>
     request<SimulacaoProposta>('/propostas/simulacoes', {
       method: 'POST',
@@ -193,11 +226,9 @@ export const api = {
     sequenciaRevisao: number,
     aprovar: boolean,
     motivo: string,
-    operadorOverrideId?: string,
   ) =>
     request<PropostaComercial>(`/propostas/${propostaId}/aprovacoes`, {
       method: 'POST',
-      headers: operadorOverrideId ? { 'X-Operador-Id': operadorOverrideId } : undefined,
       body: json({ sequenciaRevisao, aprovar, motivo }),
     }),
   converterPropostaEmVenda: (propostaId: number, sequenciaRevisao: number) =>
@@ -228,9 +259,18 @@ export const api = {
     request<void>(`/carros/${carroId}/${foto.principal ? 'foto' : `fotos/${foto.id}`}`, {
       method: 'DELETE',
     }),
+  /** Troca a própria senha. O cookie da sessão vai junto (mesma origem) e mantém este navegador logado. */
+  trocarSenha: (senhaAtual: string, novaSenha: string) =>
+    request<void>('/auth/senha', {
+      method: 'PUT',
+      // O cookie de sessão identifica qual sessão manter; explícito como em session.ts
+      credentials: 'include',
+      body: json({ senhaAtual, novaSenha }),
+    }),
 };
-export function photoUrl(carroId: number, foto?: Foto, revision = 0) {
-  return `${API_BASE}/carros/${carroId}/${foto?.id ? `fotos/${foto.id}/conteudo` : 'foto'}?v=${revision}`;
+/** Caminho do arquivo da foto na API; é baixado com autenticação por useImagemAutenticada. */
+export function photoPath(carroId: number, foto?: Foto, revision = 0) {
+  return `/carros/${carroId}/${foto?.id ? `fotos/${foto.id}/conteudo` : 'foto'}?v=${revision}`;
 }
 export async function allPages<T>(
   collection: 'carros' | 'clientes' | 'vendas',

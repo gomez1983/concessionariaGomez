@@ -25,6 +25,7 @@ graph TD
     D --> E[Fase 5: Frontend Moderno SPA]
     E --> F[Fase 6: DevOps e Containerização Total]
     F --> G[Fase 7: Propostas Comerciais e Negociação Assistida]
+    G --> H[Fase 8: Segurança, Autenticação e Hardening]
 ```
 
 ---
@@ -234,6 +235,47 @@ graph TD
 - [x] **Etapas 7.6 e 7.7 — Fechamento de Vendas, Indicadores e Homologação:**
   - Conversão idempotente e transacional de revisão autorizada em [`Venda`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/model/Venda.java) com valores congelados, integração com `POST /vendas` e cancelamento auditado (`POST /vendas/{id}/cancelamento-auditado`) em [`EmissaoVendaService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/EmissaoVendaService.java).
   - Evolução dos indicadores em [`ResumoEstoqueService`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/domain/service/ResumoEstoqueService.java) e [`DashboardModel`](file:///C:/Projetos/concessionaria/src/main/java/com/concessionaria/gomez/api/model/DashboardModel.java), além de suíte de testes unitários em [`GestaoPropostaComercialServiceTest`](file:///C:/Projetos/concessionaria/src/test/java/com/concessionaria/gomez/domain/service/GestaoPropostaComercialServiceTest.java).
+
+---
+
+### 🔹 Fase 8: Segurança, Autenticação e Hardening (100% Concluída)
+> 📄 **Auditoria e design:** [`docs/security/audits/2026-11-25-auditoria.md`](docs/security/audits/2026-11-25-auditoria.md) e [`docs/security/design/2026-11-25-etapa3-autenticacao-rbac.md`](docs/security/design/2026-11-25-etapa3-autenticacao-rbac.md). O detalhe de cada etapa está no [`CHANGELOG.md`](CHANGELOG.md).
+
+Correção da auditoria de segurança de 25/11/2026, em etapas pequenas revisadas por outra IA:
+- [x] **Etapa 1a — Contenção imediata:**
+  - Perfil padrão fail-closed.
+  - Receita adicional do vendedor passa a depender de confirmação gerencial.
+  - Venda dupla bloqueada.
+  - Portas publicadas só em `127.0.0.1` e credenciais lidas do `.env`.
+  - A API usa um usuário de banco dedicado, sem `root`.
+- [x] **Etapa 1b — Dependências:** Spring Boot 3.5.16 (Tomcat 10.1.55, corrige a CVE-2025-48988).
+- [x] **Etapa 2 — Integridade e confidencialidade:**
+  - Ciclo de vida das vendas e cancelamento auditado.
+  - Custo de aquisição oculto para o vendedor.
+  - Política comercial exposta por DTO.
+- [x] **Etapa 3a — Autenticação e autorização:**
+  - Spring Security com JWT (15 min) e refresh token rotativo em cookie `HttpOnly`.
+  - Matriz de permissões por rota (`VENDEDOR`, `GERENTE`, `ADMIN`).
+  - Login com bloqueio por tentativas e tela de login.
+- [x] **Etapa 3b — Complementos:**
+  - Troca da própria senha.
+  - Gestão de usuários pela API (somente `ADMIN`), com senha temporária gerada pelo servidor.
+  - Botões ocultos conforme o perfil.
+- [x] **Etapa 4 — Hardening:**
+  - Erros internos só no log.
+  - `nosniff` nas fotos.
+  - Nginx sem root, com CSP e cabeçalhos de segurança.
+  - Links HATEOAS corretos atrás do `/api`.
+  - Perfis `dev`/`prod`, com Swagger desligado em `prod`.
+  - Nenhuma senha versionada.
+
+---
+
+## 🔭 Próximos Passos (fora do escopo da Fase 8)
+- [ ] **Migração para Spring Boot 4.x:** o suporte gratuito (OSS) da linha 3.5 terminou em 30/06/2026.
+- [ ] **Preço anunciado definido pelo gerente (Opção C):** hoje o preço sugerido (`venda = compra × 1,10`) é calculado em código público e permite ao vendedor deduzir o custo de aquisição. A proposta é que o `VENDEDOR` veja só um `precoAnunciado` gravado pelo gerente.
+- [ ] **Tela de gestão de usuários no painel:** hoje a gestão é feita pela API (`/usuarios`, somente `ADMIN`).
+- [ ] **HTTPS na publicação:** necessário antes de expor o painel fora da máquina local (cookie `Secure` e cabeçalho HSTS).
 
 ---
 

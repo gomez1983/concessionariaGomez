@@ -10,7 +10,10 @@ import {
   X,
 } from 'lucide-react';
 import type { Carro, Foto } from '../types';
-import { api, photoUrl } from '../lib/api';
+import { api, photoPath } from '../lib/api';
+import { FotoAutenticada } from './FotoAutenticada';
+import { useUsuario } from '../lib/auth';
+import { ehGestao } from '../lib/permissoes';
 import { useResource } from '../lib/useResource';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from './ui/dialog';
 import { Button } from './ui/button';
@@ -29,6 +32,7 @@ export function VehicleGallery({
   onChanged: () => void;
 }) {
   const photos = useResource((signal) => api.fotos(vehicle.id, signal), [vehicle.id]);
+  const podeRemoverFoto = ehGestao(useUsuario().perfil);
   const [selected, setSelected] = useState(0);
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [target, setTarget] = useState<Foto>();
@@ -158,7 +162,10 @@ export function VehicleGallery({
             {photo ? (
               <>
                 <div className="gallery-stage">
-                  <img src={photoUrl(vehicle.id, photo, revision)} alt={photo.descricao} />
+                  <FotoAutenticada
+                    path={photoPath(vehicle.id, photo, revision)}
+                    alt={photo.descricao}
+                  />
                   <Button
                     variant="outline"
                     size="icon"
@@ -203,26 +210,28 @@ export function VehicleGallery({
                         }}
                       />
                     </label>
-                    <Button
-                      variant="ghost"
-                      disabled={uploading}
-                      aria-label="Remover foto selecionada"
-                      onClick={() =>
-                        setConfirmation({
-                          title: 'Remover esta foto?',
-                          description:
-                            'A imagem será removida da galeria e do armazenamento do servidor.',
-                          label: 'Remover foto',
-                          action: async () => {
-                            await api.deleteFoto(vehicle.id, photo);
-                            setSelected(0);
-                            refresh();
-                          },
-                        })
-                      }
-                    >
-                      <Trash2 size={16} />
-                    </Button>
+                    {podeRemoverFoto && (
+                      <Button
+                        variant="ghost"
+                        disabled={uploading}
+                        aria-label="Remover foto selecionada"
+                        onClick={() =>
+                          setConfirmation({
+                            title: 'Remover esta foto?',
+                            description:
+                              'A imagem será removida da galeria e do armazenamento do servidor.',
+                            label: 'Remover foto',
+                            action: async () => {
+                              await api.deleteFoto(vehicle.id, photo);
+                              setSelected(0);
+                              refresh();
+                            },
+                          })
+                        }
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="gallery-thumbs">
@@ -233,7 +242,7 @@ export function VehicleGallery({
                       aria-pressed={index === selected}
                       onClick={() => setSelected(index)}
                     >
-                      <img src={photoUrl(vehicle.id, foto, revision)} alt="" />
+                      <FotoAutenticada path={photoPath(vehicle.id, foto, revision)} alt="" />
                       <span>{foto.descricao}</span>
                     </button>
                   ))}

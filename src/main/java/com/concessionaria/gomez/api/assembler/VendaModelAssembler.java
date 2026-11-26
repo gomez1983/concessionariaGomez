@@ -38,7 +38,7 @@ public class VendaModelAssembler {
 
         // HATEOAS: Link para o veículo vendido
         if (venda.getCarro() != null && venda.getCarro().getId() != null) {
-            vendaModel.add(linkTo(methodOn(CarroController.class).buscar(venda.getCarro().getId())).withRel("carro"));
+            vendaModel.add(linkTo(methodOn(CarroController.class).buscar(venda.getCarro().getId(), null)).withRel("carro"));
         }
 
         // HATEOAS: Link para o cliente comprador

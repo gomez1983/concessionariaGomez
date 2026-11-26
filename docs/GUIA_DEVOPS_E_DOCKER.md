@@ -92,6 +92,14 @@ Você **não precisa usar o terminal** no seu dia a dia se preferir uma experiê
 ## 4. Explicação Detalhada dos Comandos
 
 ### 🔹 1. Subindo o Sistema
+Na primeira vez, crie o arquivo de credenciais locais a partir do modelo e troque as senhas:
+```powershell
+Copy-Item .env.example .env
+```
+O `.env` não é versionado. Sem ele, o `docker compose` recusa a subida e indica qual variável falta.
+
+**Autenticação (desde a Etapa 3a):** preencha também `JWT_SECRET` (chave aleatória em Base64; o `.env.example` mostra o comando) e as senhas `SEED_ADMIN_PASSWORD`, `SEED_GERENTE_PASSWORD` e `SEED_VENDEDOR_PASSWORD` (10 a 72 caracteres). Na subida, o backend cria os usuários `admin@`, `gerente@` e `vendedor@concessionariagomez.com.br` que ainda não existirem. A migration `V011` cria as tabelas `usuario` e `sessao_usuario` e não altera nenhum dado existente: o volume `mysql_data` continua o mesmo.
+
 ```powershell
 docker compose up -d
 ```
@@ -138,9 +146,12 @@ Com os containers ligados (`docker compose up -d`), você pode acessar cada comp
 | Recurso | Endereço (URL) | Descrição |
 | :--- | :--- | :--- |
 | 🌐 **Painel da Concessionária** | [http://localhost](http://localhost) | Aplicação web completa (React + Tailwind) servida na porta padrão 80. |
-| 📖 **Swagger UI (Documentação)** | [http://localhost/swagger-ui/index.html](http://localhost/swagger-ui/index.html) | Interface OpenAPI para testar endpoints interativamente. |
-| ⚡ **API Spring Boot (Direta)** | [http://localhost:8080/dashboard](http://localhost:8080/dashboard) | Acesso direto aos endpoints RESTful da API. |
-| 🗄️ **Banco de Dados MySQL** | `localhost:3307` | Conexão para DBeaver / DataGrip (`root` / `catita01`). |
+| 📖 **Swagger UI (Documentação)** | [http://localhost/swagger-ui/index.html](http://localhost/swagger-ui/index.html) | Interface OpenAPI para testar endpoints interativamente. Só existe no perfil `dev` (Problema 8). |
+| ⚡ **API Spring Boot (Direta)** | [http://localhost:8080](http://localhost:8080) | Acesso direto aos endpoints RESTful. Exige `Authorization: Bearer <token>` obtido em `POST /auth/login`. |
+| 🗄️ **Banco de Dados MySQL** | `localhost:3307` | Conexão para DBeaver / DataGrip com o usuário e a senha definidos no seu `.env`. |
+
+> [!NOTE]
+> Todas as portas são publicadas apenas em `127.0.0.1`: ficam acessíveis nesta máquina, mas não a outros computadores da rede.
 
 ---
 
@@ -167,14 +178,15 @@ Com os containers ligados (`docker compose up -d`), você pode acessar cada comp
 ### Problema 1: "Port 80 is already in use"
 Se outra aplicação na sua máquina (ex: IIS, Skype ou outro servidor web) estiver usando a porta 80:
 1. Abra o arquivo `docker-compose.yml`.
-2. Na seção do `frontend`, troque `ports: - "80:80"` por `ports: - "3000:80"` ou `ports: - "5173:80"`.
+2. Na seção do `frontend`, troque `ports: - "127.0.0.1:80:8080"` por `ports: - "127.0.0.1:3000:8080"`. Mude só o número da esquerda: dentro do container, o Nginx roda sem root e escuta na 8080.
 3. Suba novamente com `docker compose up -d`. O painel passará a responder em `http://localhost:3000`.
 
 ### Problema 2: Preciso rodar comandos direto dentro do container do banco
 Para abrir o terminal do MySQL interativo via linha de comando:
 ```powershell
-docker exec -it concessionaria-mysql mysql -u root -pcatita01 concessionaria
+docker exec -it concessionaria-mysql mysql -u root -p concessionaria
 ```
+O MySQL pede a senha do root, definida em `MYSQL_ROOT_PASSWORD` no seu `.env`.
 
 ### Problema 3: O container do Spring Boot não consegue falar com o banco
 O Docker Compose cria uma rede com DNS interno. Dentro do container da API, o endereço do banco **não é `localhost`**, e sim o nome do serviço `mysql`:
@@ -182,3 +194,40 @@ O Docker Compose cria uma rede com DNS interno. Dentro do container da API, o en
 DB_URL=jdbc:mysql://mysql:3306/concessionaria
 ```
 Isso já está configurado automaticamente como variável de ambiente no seu `docker-compose.yml`.
+
+### Problema 4: A API não sobe com "Access denied for user" (volume de banco antigo)
+A API conecta com o usuário da aplicação (`DB_APP_USERNAME`), não com o `root`. O MySQL só cria esse usuário automaticamente quando o volume `mysql_data` é novo. Em um volume que já existia, crie o usuário uma única vez, **sem apagar o volume** (os dados são preservados):
+```powershell
+docker exec -it concessionaria-mysql mysql -u root -p
+```
+```sql
+CREATE USER IF NOT EXISTS 'concessionaria_app'@'%' IDENTIFIED BY 'a-mesma-senha-de-DB_APP_PASSWORD';
+GRANT ALL PRIVILEGES ON `concessionaria`.* TO 'concessionaria_app'@'%';
+FLUSH PRIVILEGES;
+```
+Depois, reinicie a API com `docker compose up -d`.
+
+### Problema 5: O backend não sobe com "JWT_SECRET não configurado" ou "JWT_SECRET muito curto"
+Defina `JWT_SECRET` no `.env` com uma chave aleatória em Base64 de pelo menos 32 bytes (o `.env.example` traz o comando que a gera) e rode `docker compose up -d`. Trocar a chave depois desconecta todos os usuários.
+
+### Problema 6: O login funciona, mas ao recarregar a página o painel pede login de novo
+A sessão sobrevive ao recarregamento graças a um cookie `HttpOnly` marcado como `Secure`. Sem HTTPS, os navegadores só aceitam cookie `Secure` em `localhost`/`127.0.0.1`. Acesse por `http://localhost`. Se precisar acessar pelo IP da rede local sem HTTPS, defina `AUTH_COOKIE_SECURE=false` no `.env` e rode `docker compose up -d`.
+
+### Problema 7: "E-mail ou senha inválidos" com a senha certa
+A mensagem é a mesma para qualquer falha, de propósito. Verifique:
+- **Bloqueio:** após 5 senhas erradas seguidas, a conta fica bloqueada por 15 minutos.
+- **Senha do `.env` alterada depois:** o `.env` só vale na criação do usuário; mudar a senha ali depois não altera um usuário que já existe.
+- **Usuário inativo:** um usuário desativado não entra.
+
+**Como resolver:** um administrador entra no painel e usa a API `/usuarios` (pela pasta "Usuários (ADMIN)" do Postman ou, no perfil `dev`, pelo Swagger):
+1. `GET /usuarios` para achar o `id` do usuário. A resposta mostra `ativo` e `bloqueadoAte`.
+2. Se a conta estiver inativa, `PUT /usuarios/{id}/ativo` reativa e também zera o bloqueio.
+3. Se a pessoa esqueceu a senha ou não quer esperar os 15 minutos, `POST /usuarios/{id}/senha-temporaria` gera uma nova senha, desbloqueia a conta e encerra as sessões abertas. A senha aparece só nessa resposta. Entregue-a por um canal seguro e peça que a pessoa a troque em **Trocar senha**, no menu com o nome do usuário.
+
+O administrador não gera senha temporária para si mesmo. Se ele próprio esqueceu a senha e não há outro `ADMIN`, a saída é pelo banco, um caso raro que está fora deste guia.
+
+### Problema 8: O Swagger (`/swagger-ui/index.html`) ou o `/v3/api-docs` responde 404
+Desde a Etapa 4, o `docker compose` sobe a API no perfil `prod`, que desliga a documentação interativa: ela revela todas as rotas e modelos da API. Para usá-la localmente, acrescente `SPRING_PROFILES_ACTIVE=dev` ao `.env` e rode `docker compose up -d`. O perfil `dev` também mostra o SQL no log e mensagens de erro mais detalhadas. Não o use num ambiente acessível por outras pessoas.
+
+### Problema 9: Os testes do backend (`mvnw verify`) não conectam no MySQL
+Os testes de integração usam o MySQL do `docker compose` (porta 3307) com o usuário `root` e criam o schema `concessionaria_test`. A senha vem de `TEST_DB_PASSWORD` ou, se ela não existir, do `MYSQL_ROOT_PASSWORD` do `.env`. Lembre-se de que o MySQL só aplica o `MYSQL_ROOT_PASSWORD` quando o volume é criado: se o volume é mais antigo que o `.env`, defina `TEST_DB_PASSWORD` com a senha que o root tem de fato.

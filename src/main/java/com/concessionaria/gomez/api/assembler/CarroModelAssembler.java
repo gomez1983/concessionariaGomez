@@ -5,6 +5,7 @@ import com.concessionaria.gomez.api.controller.CarroFotoController;
 import com.concessionaria.gomez.api.controller.CarroGaleriaController;
 import com.concessionaria.gomez.api.model.CarroModel;
 import com.concessionaria.gomez.domain.model.Carro;
+import com.concessionaria.gomez.domain.model.PerfilOperadorComercial;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
@@ -22,12 +23,19 @@ public class CarroModelAssembler {
 
     private final ModelMapper modelMapper;
 
-    public CarroModel toModel(Carro carro) {
+    /**
+     * @param perfil perfil do operador; o custo de aquisição ({@code compra}) só é exposto
+     *               a quem pode ver custos e margens internas (GERENTE/ADMIN).
+     */
+    public CarroModel toModel(Carro carro, PerfilOperadorComercial perfil) {
         if (carro == null) {
             return null;
         }
 
         CarroModel carroModel = modelMapper.map(carro, CarroModel.class);
+        if (perfil == null || !perfil.podeVerCustosEMargensInternas()) {
+            carroModel.setCompra(null);
+        }
         carroModel.setVenda(carro.calcularPrecoVendaSugerido());
         carroModel.setPrecoAnunciado(carro.obterPrecoAnunciadoEfetivo());
         carroModel.setZeroKm(carro.isZeroKm());
@@ -39,7 +47,7 @@ public class CarroModelAssembler {
 
         // HATEOAS: Link para o próprio recurso individual (self) -> GET /carros/{id}
         if (carro.getId() != null) {
-            carroModel.add(linkTo(methodOn(CarroController.class).buscar(carro.getId())).withSelfRel());
+            carroModel.add(linkTo(methodOn(CarroController.class).buscar(carro.getId(), null)).withSelfRel());
             // HATEOAS: Link para foto do veículo -> GET /carros/{id}/foto
             carroModel.add(linkTo(methodOn(CarroFotoController.class).buscar(carro.getId())).withRel("foto"));
             carroModel.add(linkTo(CarroGaleriaController.class, carro.getId()).withRel("galeria"));
@@ -66,9 +74,9 @@ public class CarroModelAssembler {
         return carroModel;
     }
 
-    public List<CarroModel> toCollectionModel(List<Carro> carros) {
+    public List<CarroModel> toCollectionModel(List<Carro> carros, PerfilOperadorComercial perfil) {
         return carros.stream()
-                .map(this::toModel)
+                .map(carro -> toModel(carro, perfil))
                 .collect(Collectors.toList());
     }
 }

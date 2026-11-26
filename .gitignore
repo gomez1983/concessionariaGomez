@@ -48,3 +48,8 @@ frontend/tsconfig.tsbuildinfo
 
 ### Graphify ###
 graphify-out/
+
+### Credenciais locais (use .env.example como modelo) ###
+.env
+.env.*
+!.env.example

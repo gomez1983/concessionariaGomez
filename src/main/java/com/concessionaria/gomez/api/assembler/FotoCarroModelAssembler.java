@@ -28,7 +28,7 @@ public class FotoCarroModelAssembler {
 
         if (carroId != null) {
             fotoCarroModel.add(linkTo(methodOn(CarroFotoController.class).buscar(carroId)).withSelfRel());
-            fotoCarroModel.add(linkTo(methodOn(CarroController.class).buscar(carroId)).withRel("carro"));
+            fotoCarroModel.add(linkTo(methodOn(CarroController.class).buscar(carroId, null)).withRel("carro"));
         }
 
         return fotoCarroModel;

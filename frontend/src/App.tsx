@@ -25,7 +25,11 @@ import {
   Search,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { api, getOperadorContext, setOperadorContext } from './lib/api';
+import { api } from './lib/api';
+import { iniciais, NOME_PERFIL, useUsuario } from './lib/auth';
+import { ehGestao } from './lib/permissoes';
+import { UserMenu } from './components/UserMenu';
+import { TrocarSenhaDialog } from './components/TrocarSenhaDialog';
 import { currency } from './lib/estoque';
 import { useResource } from './lib/useResource';
 import { Button } from './components/ui/button';
@@ -36,7 +40,6 @@ import { Customers } from './components/Customers';
 import { Proposals } from './components/Proposals';
 import { Sales } from './components/Sales';
 import { useTheme } from './lib/useTheme';
-import type { PerfilOperador } from './types';
 
 type Section = 'estoque' | 'overview' | 'clientes' | 'propostas' | 'vendas';
 const sections: Record<
@@ -88,7 +91,10 @@ export default function App() {
   const [mobileNav, setMobileNav] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [toast, setToast] = useState('');
-  const [perfil, setPerfil] = useState<PerfilOperador>(() => getOperadorContext().perfil);
+  const usuario = useUsuario();
+  const [trocandoSenha, setTrocandoSenha] = useState(false);
+  const perfil = usuario.perfil;
+  const siglaUsuario = iniciais(usuario.nome);
   const dashboard = useResource(api.dashboard, [revision, perfil]);
   const summary = dashboard.data;
   const config = sections[section];
@@ -96,11 +102,8 @@ export default function App() {
     setRevision((value) => value + 1);
     if (message) setToast(message);
   }
-  function handlePerfilChange(nextPerfil: PerfilOperador) {
-    setOperadorContext(nextPerfil);
-    setPerfil(nextPerfil);
-    setRevision((value) => value + 1);
-  }
+  // Novo veículo e nova venda direta são de GERENTE/ADMIN; cliente e proposta, de todos os perfis
+  const podeAcaoPrincipal = section === 'clientes' || section === 'propostas' || ehGestao(perfil);
   function navigate(next: Section) {
     setSection(next);
     setFormRequested(false);
@@ -201,9 +204,12 @@ export default function App() {
             <ArrowUpRight size={15} />
           </button>
           <div className="profile">
-            <span className="avatar">CG</span>
+            <span className="avatar" aria-hidden="true">
+              {siglaUsuario}
+            </span>
             <div>
-              Concessionária Gomez<small>Perfil: {perfil}</small>
+              {usuario.nome}
+              <small>{NOME_PERFIL[perfil]}</small>
             </div>
             <span className="online-dot" />
           </div>
@@ -256,30 +262,6 @@ export default function App() {
             )}
           </div>
           <div className="topbar-right">
-            <label
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}
-              title="Alternar perfil operacional (Alçada Comercial)"
-            >
-              <span className="muted">Perfil:</span>
-              <select
-                aria-label="Perfil do operador comercial"
-                value={perfil}
-                onChange={(e) => handlePerfilChange(e.target.value as PerfilOperador)}
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: 6,
-                  border: '1px solid var(--border, #334155)',
-                  background: 'transparent',
-                  color: 'inherit',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
-                <option value="VENDEDOR">Vendedor</option>
-                <option value="GERENTE">Gerente</option>
-                <option value="ADMIN">Admin</option>
-              </select>
-            </label>
             <Button
               variant="ghost"
               size="icon"
@@ -307,13 +289,7 @@ export default function App() {
             >
               <RefreshCw size={16} />
             </Button>
-            <button
-              className="top-avatar"
-              onClick={() => setInfoOpen(true)}
-              aria-label="Sobre o painel"
-            >
-              CG
-            </button>
+            <UserMenu onTrocarSenha={() => setTrocandoSenha(true)} />
           </div>
         </header>
         <main>
@@ -323,15 +299,17 @@ export default function App() {
               <h1>{config.title}</h1>
               <p>{config.description}</p>
             </div>
-            <Button
-              onClick={() => {
-                if (section === 'overview') setSection('estoque');
-                setFormRequested(true);
-              }}
-            >
-              <Plus size={18} />
-              {config.action}
-            </Button>
+            {podeAcaoPrincipal && (
+              <Button
+                onClick={() => {
+                  if (section === 'overview') setSection('estoque');
+                  setFormRequested(true);
+                }}
+              >
+                <Plus size={18} />
+                {config.action}
+              </Button>
+            )}
           </div>
           {(section === 'estoque' || section === 'overview') && (
             <>
@@ -518,7 +496,8 @@ export default function App() {
             </p>
             <p>
               O preço sugerido e os indicadores financeiros vêm do domínio Java. Custos e margens
-              internas são protegidos conforme o perfil selecionado (Vendedor, Gerente ou Admin).
+              internas são protegidos conforme o perfil do usuário (Vendedor, Gerente ou
+              Administrador).
             </p>
           </div>
           <Button onClick={() => setInfoOpen(false)}>
@@ -527,6 +506,14 @@ export default function App() {
           </Button>
         </DialogContent>
       </Dialog>
+      <TrocarSenhaDialog
+        open={trocandoSenha}
+        onClose={() => setTrocandoSenha(false)}
+        onDone={(mensagem) => {
+          setTrocandoSenha(false);
+          setToast(mensagem);
+        }}
+      />
       {toast && (
         <div className="toast" role="status">
           <span>

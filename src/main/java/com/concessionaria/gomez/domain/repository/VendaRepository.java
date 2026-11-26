@@ -16,4 +16,10 @@ public interface VendaRepository extends JpaRepository<Venda, Long>, JpaSpecific
     List<Venda> findAllComRelacionamentos();
 
     Optional<Venda> findByRevisaoConvertidaId(Long revisaoConvertidaId);
+
+    /** Indica se o veículo possui alguma venda vigente (não cancelada). */
+    boolean existsByCarroIdAndCanceladaFalse(Long carroId);
+
+    /** Indica se o veículo possui outra venda vigente além da informada. */
+    boolean existsByCarroIdAndCanceladaFalseAndIdNot(Long carroId, Long vendaId);
 }
